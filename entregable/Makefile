@@ -1,5 +1,4 @@
 .POSIX:
-.SUFFIXES:
 .SUFFIXES: .o .cpp
 
 CXX = g++
@@ -10,7 +9,10 @@ LDLIBS = -lpthread
 	$(CXX) $(CXXFLAGS) -c $<
 
 BIN = test-2 test-3 test-5
-OBJ = ConcurrentHashMap.o
+OBJ = ConcurrentHashMap.hpp
+
+# %.o: %.hpp
+# 	$(CXX) $(CXXFLAGS) -c $<
 
 all: $(BIN)
 

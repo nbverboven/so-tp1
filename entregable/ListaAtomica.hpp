@@ -46,7 +46,7 @@ public:
 	public:
 		Iterador() : _lista(nullptr), _nodo_sig(nullptr) {}
 
-		Iterador& operator = (const typename Lista::Iterador& otro) {
+		Iterador& operator=(const typename Lista::Iterador& otro) {
 			_lista = otro._lista;
 			_nodo_sig = otro._nodo_sig;
 			return *this;
@@ -64,7 +64,7 @@ public:
 			_nodo_sig = _nodo_sig->_next;
 		}
 
-		bool operator == (const typename Lista::Iterador& otro) const {
+		bool operator==(const typename Lista::Iterador& otro) const {
 			return _lista._head.load() == otro._lista._head.load() && _nodo_sig == otro._nodo_sig;
 		}
 
