@@ -29,6 +29,7 @@ public:
 	void push_front(const T& val) {
 		Nodo *primero = _head.load();
 		Nodo *nuevo = new Nodo(val);
+		nuevo->_next = primero;
 
 		/* Con esto evito que dos procesos actualicen simultáneamente
 		   el primero. Es decir, se evita una condición de carrera.
