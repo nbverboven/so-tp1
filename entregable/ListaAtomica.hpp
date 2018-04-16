@@ -35,10 +35,10 @@ public:
 
 		/* Con esto evito que dos procesos actualicen simultáneamente
 		   el primero. Es decir, se evita una condición de carrera. */
-		while(!_head.atomic::compare_and_exchange_strong(primero, nuevo)){
+		while(!_head.compare_and_exchange_strong(primero, nuevo)){
 			/* Mientras no pueda agregar, actualizo la información que 
 			   tengo para que, cuando me toque el turno, se mantenga 
-			   le coherencia de la estructura. */
+			   la coherencia de la estructura. */
 			primero = _head.load();
 			nuevo->_next = primero;
 		}
