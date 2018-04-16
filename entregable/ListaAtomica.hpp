@@ -27,19 +27,16 @@ public:
 	}
 
 	void push_front(const T& val) {
-
-		/* No inicializo el primero para considerar el caso
-		   en que la lista esté vacía. */
-		Nodo *primero;
+		Nodo *primero = _head.load();
 		Nodo nuevo(val);
 
 		/* Con esto evito que dos procesos actualicen simultáneamente
-		   el primero. Es decir, se evita una condición de carrera. */
+		   el primero. Es decir, se evita una condición de carrera.
+		   Si la comparación es falsa, primero se actualiza con _head. */
 		while(!_head.compare_and_exchange_strong(primero, nuevo)){
-			/* Mientras no pueda agregar, actualizo la información que 
-			   tengo para que, cuando me toque el turno, se mantenga 
+			/* Mientras no pueda agregar, actualizo el nuevo nodo
+			   para que, cuando me toque el turno, se mantenga 
 			   la coherencia de la estructura. */
-			primero = _head.load();
 			nuevo->_next = primero;
 		}
 
