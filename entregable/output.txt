@@ -1,4 +1,0 @@
-awk -f corpus.awk corpus | sort >corpus-post
-for i in 0 1 2 3 4; do sed -n "$((i * 500 + 1)),$(((i + 1) * 500))p" corpus >corpus-"$i"; done
-for i in 0 1 2 3 4; do ./test-3 $((i + 1)) | sort | diff -u - corpus-post; done
-rm -f corpus-post corpus-[0-4]
