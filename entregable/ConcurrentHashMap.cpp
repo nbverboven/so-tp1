@@ -35,7 +35,8 @@ ConcurrentHashMap& ConcurrentHashMap::operator=(const ConcurrentHashMap &chm){
 	for (int i = 0; i < 26; ++i){
 		Lista< pair<string, unsigned int> >::Iterador it = chm.tabla[i].CrearIt();
 		while(it.HaySiguiente()){
-			addAndInc(it.Siguiente().first);
+			for(int l=0; l<it.Siguiente().second; ++l)
+				addAndInc(it.Siguiente().first);
 			it.Avanzar();
 		}
 	}
@@ -207,14 +208,41 @@ ConcurrentHashMap ConcurrentHashMap::count_words(string arch){
 		while (getline (file,line)){
 			string word;
 			istringstream buf(line);
-			while(buf >> word)
+			while(buf >> word){
 				dicc.addAndInc(word);
+			}
 		}
 		file.close();
 	}
 	return dicc;
 }
 
+
+typedef struct thread_data_countWords
+{
+	int thread_id;
+	string file;
+	ConcurrentHashMap* hash_map;
+
+} thread_data_countWords;
+
+void* CountWordsByFile_andy_mejorQueEsaFuncionBasuraDeNico(void *arguments){
+	struct thread_data_countWords *thread_data;
+   	thread_data = (struct thread_data_countWords *) arguments;
+
+	string line;
+	ifstream file(thread_data->file);
+	if (file.is_open()){
+		while (getline (file,line)){
+			string word;
+			istringstream buf(line);
+			while(buf >> word)
+				thread_data->hash_map->addAndInc(word);
+		}
+		file.close();
+	}
+
+}
 
 /*
 	Devuelve el ConcurrentHashMap cargado con las
@@ -225,6 +253,23 @@ ConcurrentHashMap ConcurrentHashMap::count_words(string arch){
 */
 ConcurrentHashMap ConcurrentHashMap::count_words(list<string> archs){
 	ConcurrentHashMap dicc;
+	int cantThreads = archs.size();
+	vector<pthread_t> threads(cantThreads);
+	struct thread_data_countWords therads_data[cantThreads];
+
+	for (int tid = 0; tid < cantThreads; ++tid){
+		therads_data[tid].thread_id = tid;
+		therads_data[tid].file = archs.front();
+		archs.pop_front();
+		therads_data[tid].hash_map = &dicc;
+
+		pthread_create(&threads[tid], NULL, CountWordsByFile_andy_mejorQueEsaFuncionBasuraDeNico, (void *)&therads_data[tid]);
+	}
+
+	for (int tid = 0; tid < cantThreads; ++tid){
+		pthread_join(threads[tid], NULL);
+	}
+
 	return dicc;
 }
 
