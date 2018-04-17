@@ -6,8 +6,7 @@ ConcurrentHashMap::ConcurrentHashMap() : cant_elementos(0) {
 	tabla = new Lista< pair<string, unsigned int> >[26];
 }
 
-ConcurrentHashMap::ConcurrentHashMap(ConcurrentHashMap &chm) : cant_elementos(chm.cant_elementos) {
-	tabla = new Lista< pair<string, unsigned int> >[26];
+ConcurrentHashMap::ConcurrentHashMap(ConcurrentHashMap &chm) {
 }
 
 ConcurrentHashMap::~ConcurrentHashMap(){
@@ -110,7 +109,7 @@ ConcurrentHashMap ConcurrentHashMap::count_words(unsigned int n, list<string> ar
 }
 
 
-pair<string, unsigned int> maximum(unsigned int p_archivos, 
+pair<string, unsigned int> ConcurrentHashMap::maximum(unsigned int p_archivos, 
 	                               unsigned int p_maximos, 
 	                               list<string> archs){
 	pair<string, unsigned int> asd("tujavie", 2);
