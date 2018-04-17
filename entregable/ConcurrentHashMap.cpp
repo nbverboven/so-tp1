@@ -2,11 +2,12 @@
 
 /****** Constructor y Destructor **********/
 
-ConcurrentHashMap::ConcurrentHashMap() : cant_elementos(0) {
+ConcurrentHashMap::ConcurrentHashMap(){
 	tabla = new Lista< pair<string, unsigned int> >[26];
 }
 
 ConcurrentHashMap::ConcurrentHashMap(ConcurrentHashMap &chm) {
+	tabla = chm.tabla;
 }
 
 ConcurrentHashMap::~ConcurrentHashMap(){
@@ -14,35 +15,46 @@ ConcurrentHashMap::~ConcurrentHashMap(){
 }
 
 
+
+
 /************ Metodos *************/
 
-void ConcurrentHashMap::addAndInc(string key){
+void ConcurrentHashMap::addAndInc(string key)
+{
 	int _hash = Hash(key);
-	Lista< pair<string, unsigned int> >::Iterador it;
+	Lista< pair<string, unsigned int> >::Iterador it = tabla[_hash].CrearIt();
 	bool encontrado = false;
 
-	for(it = tabla[_hash].CrearIt(); it.HaySiguiente(); it.Avanzar()){
-		if(it.Siguiente().first == key){
-			it.Siguiente().second++;
+	while(it.HaySiguiente() && !encontrado)
+	{
+		if(it.Siguiente().first == key)
+		{
+			++it.Siguiente().second;
 			encontrado = true;
 		}
+		it.Avanzar();
 	}
 
-	if(!encontrado){
-		tabla[_hash].push_front( make_pair(key,1) );
-		cant_elementos++;
+	if(!encontrado)
+	{
+		tabla[_hash].push_front(make_pair(key,1));
+		// cant_elementos++;
 	}
 }
 
 
 bool ConcurrentHashMap::member(string key){
 	int _hash = Hash(key);
-	Lista< pair<string, unsigned int> >::Iterador it;
+	Lista< pair<string, unsigned int> >::Iterador it = tabla[_hash].CrearIt();
 	bool encontrado = false;
 
-	for(it = tabla[_hash].CrearIt(); it.HaySiguiente(); it.Avanzar()){
+	while(it.HaySiguiente() && !encontrado)
+	{
 		if(it.Siguiente().first == key)
+		{
 			encontrado = true;
+		}
+		it.Avanzar();
 	}
 
 	return encontrado;
@@ -68,11 +80,16 @@ ConcurrentHashMap ConcurrentHashMap::count_words(string arch){
 
 	string line;
 	ifstream file(arch);
-	if (file.is_open()){
-		while ( getline (file,line) ){
+
+	if (file.is_open())
+	{
+		while (getline (file,line))
+		{
 			string word;
 			istringstream buf(line);
-    		while(buf >> word){
+
+    		while(buf >> word)
+    		{
 				dicc->addAndInc(word);
 			}
 		}

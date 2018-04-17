@@ -18,11 +18,12 @@ class ConcurrentHashMap
 {
 public:
 
-	Lista< pair<string, unsigned int> >* tabla;
+	Lista< pair<string, unsigned int> > *tabla;
 
 	ConcurrentHashMap();
 	ConcurrentHashMap(ConcurrentHashMap &chm);
 	~ConcurrentHashMap();
+
 
 	/*
 		Si key existe, incrementa su valor. Si no, crea
@@ -60,9 +61,9 @@ public:
 
 protected:
 
-	int cant_elementos;
+	// int cant_elementos;
 
-	int Hash (const string& str) const {
+	static int Hash (const string& str) {
 		int hash = (int)(str[0]) % 26;
 		return hash;
 	}

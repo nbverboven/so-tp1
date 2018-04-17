@@ -40,8 +40,6 @@ public:
 			   la coherencia de la estructura. */
 			nuevo->_next = primero;
 		}
-
-
 	}
 
 	T& front() const {
