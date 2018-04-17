@@ -281,5 +281,6 @@ TEST(ConcurrentHashMap, TestMaximum1Thread)
 	h.addAndInc("je");
 	h.addAndInc("je");
 
-	pair<string, unsigned int> res = h.maximum(1);
+	pair<string, unsigned int> asd("computadora", 5);
+	EXPECT_EQ(h.maximum(1), asd);
 }

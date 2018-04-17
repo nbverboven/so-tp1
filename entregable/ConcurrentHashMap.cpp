@@ -83,7 +83,7 @@ typedef struct info_aux_nico_str
 {
 	vector<unsigned int> *estado_filas;
 	vector<pair<string, unsigned int>*> *resultados;
-	Lista< pair<string, unsigned int> > *hash_map;
+	ConcurrentHashMap *hash_map;
 
 } info_aux_nico;
 
@@ -103,7 +103,7 @@ void *maximumEnFila_nico(void *info)
 
 			// Busco el elemento con más apariciones en la fila i
 			pair<string, unsigned int> elem;
-			Lista<pair<string, unsigned int>>::Iterador it = asd.hash_map[i].CrearIt();
+			Lista<pair<string, unsigned int>>::Iterador it = ((asd.hash_map)->tabla[i]).CrearIt();
 
 			if (it.HaySiguiente())
 			{
@@ -126,7 +126,7 @@ void *maximumEnFila_nico(void *info)
 
 				// Actualizo la lista global de resultados con el de la fila
 				// que revisé
-				*((*asd.resultados)[i]) = elem;
+				(*asd.resultados)[i] = new pair<string, unsigned int>(elem.first, elem.second);
 			}
 
 			// Si en la lista no había nada, el puntero de la lista de 
@@ -154,7 +154,7 @@ pair<string, unsigned int> ConcurrentHashMap::maximum(unsigned int nt)
 	info_aux_nico aux;
 	aux.estado_filas = &filas;
 	aux.resultados = &results;
-	aux.hash_map = tabla;
+	aux.hash_map = this;
 
 	for (tid = 0; tid < nt; ++tid)
 	{
@@ -187,7 +187,7 @@ pair<string, unsigned int> ConcurrentHashMap::maximum(unsigned int nt)
 		}
 	}
 
-	return *results[i];
+	return *(results[i]);
 }
 
 
