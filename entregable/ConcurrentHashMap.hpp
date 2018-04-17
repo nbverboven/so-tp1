@@ -1,7 +1,9 @@
 #ifndef CONCURRENT_HASH_MAP_HPP
 #define CONCURRENT_HASH_MAP_HPP
 
+#include <pthread.h>
 #include <atomic>
+#include <mutex>
 #include <utility>
 #include <string>
 #include <list>
@@ -47,7 +49,7 @@ public:
 		El parámetro nt indica la cantidad de threads a 
 		utilizar. Los threads procesarán una fila del
 		arreglo. Si no tienen filas, terminan su ejecución.
-		`
+		
 		-- Es concurrente con member, no así con addAndInc --
 	*/
 	pair<string, unsigned int> maximum(unsigned int nt);
@@ -62,11 +64,10 @@ public:
 protected:
 	// int cant_elementos;
 
-	static int Hash (const string& str) {
+	int Hash (const string& str){
 		int hash = (int)(str[0]) % 26;
 		return hash;
 	}
-
 };
 
 #endif // CONCURRENT_HASH_MAP_HPP

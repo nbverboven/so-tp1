@@ -6,6 +6,7 @@ ConcurrentHashMap::ConcurrentHashMap(){
 	tabla = new Lista<pair<string, unsigned int>>[26];
 }
 
+
 ConcurrentHashMap::ConcurrentHashMap(ConcurrentHashMap &chm){
 	tabla = new Lista<pair<string, unsigned int>>[26];
 	for (int i = 0; i < 26; ++i){
@@ -17,10 +18,13 @@ ConcurrentHashMap::ConcurrentHashMap(ConcurrentHashMap &chm){
 	}
 }
 
+
 ConcurrentHashMap::~ConcurrentHashMap(){
 	delete[] tabla;
 }
 
+
+/****** Operadores **********/
 
 ConcurrentHashMap& ConcurrentHashMap::operator=(const ConcurrentHashMap &chm){
 	Lista< pair<string, unsigned int> > *tabla_vieja = tabla;
@@ -35,7 +39,6 @@ ConcurrentHashMap& ConcurrentHashMap::operator=(const ConcurrentHashMap &chm){
 	delete[] tabla_vieja;
 	return *this;
 }
-
 
 
 /************ Metodos *************/
@@ -72,8 +75,25 @@ bool ConcurrentHashMap::member(string key){
 }
 
 
-pair<string, unsigned int> ConcurrentHashMap::maximum(unsigned int nt){
-	pair<string, unsigned int> asd("tujavie", 2);
+void *maximumEnFila_nico(void *info)
+{
+	
+	return NULL;
+}
+
+pair<string, unsigned int> ConcurrentHashMap::maximum(unsigned int nt)
+{
+	vector<pthread_t> threads(nt);
+	std::vector<int> tids(nt);
+	int tid;
+	unsigned int filas_restantes = nt;
+
+	for (tid = 0; i < nt; ++i)
+	{
+		tids[tid] = tid;
+		pthread_create(&threads[tid], NULL, )
+	}
+
 	return asd;
 }
 
@@ -87,7 +107,6 @@ pair<string, unsigned int> ConcurrentHashMap::maximum(unsigned int nt){
 	No concurrente.
 */
 ConcurrentHashMap ConcurrentHashMap::count_words(string arch){
-	// ConcurrentHashMap* dicc = new ConcurrentHashMap();
 	ConcurrentHashMap dicc;
 	string line;
 	ifstream file(arch);
@@ -112,7 +131,8 @@ ConcurrentHashMap ConcurrentHashMap::count_words(string arch){
 	Un thread por archivo.
 */
 ConcurrentHashMap ConcurrentHashMap::count_words(list<string> archs){
-	return *(new ConcurrentHashMap());
+	ConcurrentHashMap dicc;
+	return dicc;
 }
 
 
@@ -126,7 +146,8 @@ ConcurrentHashMap ConcurrentHashMap::count_words(list<string> archs){
 	sin procesar.
 */
 ConcurrentHashMap ConcurrentHashMap::count_words(unsigned int n, list<string> archs){
-	return *(new ConcurrentHashMap());
+	ConcurrentHashMap dicc;
+	return dicc;
 }
 
 
