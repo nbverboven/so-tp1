@@ -17,13 +17,11 @@ using namespace std;
 class ConcurrentHashMap
 {
 public:
-
 	Lista< pair<string, unsigned int> > *tabla;
 
 	ConcurrentHashMap();
 	ConcurrentHashMap(ConcurrentHashMap &chm);
 	~ConcurrentHashMap();
-
 
 	/*
 		Si key existe, incrementa su valor. Si no, crea
@@ -59,8 +57,9 @@ public:
 	static ConcurrentHashMap count_words(unsigned int n, list<string> archs);
 	static pair<string, unsigned int> maximum(unsigned int p_archivos, unsigned int p_maximos, list<string>archs);
 
-protected:
+	ConcurrentHashMap& operator=(const ConcurrentHashMap &otro);
 
+protected:
 	// int cant_elementos;
 
 	static int Hash (const string& str) {

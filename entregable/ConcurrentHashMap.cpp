@@ -3,11 +3,18 @@
 /****** Constructor y Destructor **********/
 
 ConcurrentHashMap::ConcurrentHashMap(){
-	tabla = new Lista< pair<string, unsigned int> >[26];
+	tabla = new Lista<pair<string, unsigned int>>[26];
 }
 
-ConcurrentHashMap::ConcurrentHashMap(ConcurrentHashMap &chm) {
-	tabla = chm.tabla;
+ConcurrentHashMap::ConcurrentHashMap(ConcurrentHashMap &chm){
+	tabla = new Lista<pair<string, unsigned int>>[26];
+	for (int i = 0; i < 26; ++i){
+		Lista< pair<string, unsigned int> >::Iterador it = chm.tabla[i].CrearIt();
+		while(it.HaySiguiente()){
+			addAndInc(it.Siguiente().first);
+			it.Avanzar();
+		}
+	}
 }
 
 ConcurrentHashMap::~ConcurrentHashMap(){
@@ -15,28 +22,36 @@ ConcurrentHashMap::~ConcurrentHashMap(){
 }
 
 
+ConcurrentHashMap& ConcurrentHashMap::operator=(const ConcurrentHashMap &chm){
+	Lista< pair<string, unsigned int> > *tabla_vieja = tabla;
+	tabla = new Lista<pair<string, unsigned int>>[26];
+	for (int i = 0; i < 26; ++i){
+		Lista< pair<string, unsigned int> >::Iterador it = chm.tabla[i].CrearIt();
+		while(it.HaySiguiente()){
+			addAndInc(it.Siguiente().first);
+			it.Avanzar();
+		}
+	}
+	delete[] tabla_vieja;
+	return *this;
+}
+
 
 
 /************ Metodos *************/
 
-void ConcurrentHashMap::addAndInc(string key)
-{
+void ConcurrentHashMap::addAndInc(string key){
 	int _hash = Hash(key);
-	Lista< pair<string, unsigned int> >::Iterador it = tabla[_hash].CrearIt();
+	Lista<pair<string, unsigned int>>::Iterador it = tabla[_hash].CrearIt();
 	bool encontrado = false;
-
-	while(it.HaySiguiente() && !encontrado)
-	{
-		if(it.Siguiente().first == key)
-		{
+	while(it.HaySiguiente() && !encontrado){
+		if(it.Siguiente().first == key){
 			++it.Siguiente().second;
 			encontrado = true;
 		}
 		it.Avanzar();
 	}
-
-	if(!encontrado)
-	{
+	if(!encontrado){
 		tabla[_hash].push_front(make_pair(key,1));
 		// cant_elementos++;
 	}
@@ -45,18 +60,14 @@ void ConcurrentHashMap::addAndInc(string key)
 
 bool ConcurrentHashMap::member(string key){
 	int _hash = Hash(key);
-	Lista< pair<string, unsigned int> >::Iterador it = tabla[_hash].CrearIt();
+	Lista<pair<string, unsigned int>>::Iterador it = tabla[_hash].CrearIt();
 	bool encontrado = false;
-
-	while(it.HaySiguiente() && !encontrado)
-	{
-		if(it.Siguiente().first == key)
-		{
+	while(it.HaySiguiente() && !encontrado){
+		if(it.Siguiente().first == key){
 			encontrado = true;
 		}
 		it.Avanzar();
 	}
-
 	return encontrado;
 }
 
@@ -76,27 +87,20 @@ pair<string, unsigned int> ConcurrentHashMap::maximum(unsigned int nt){
 	No concurrente.
 */
 ConcurrentHashMap ConcurrentHashMap::count_words(string arch){
-	ConcurrentHashMap* dicc = new ConcurrentHashMap();
-
+	// ConcurrentHashMap* dicc = new ConcurrentHashMap();
+	ConcurrentHashMap dicc;
 	string line;
 	ifstream file(arch);
-
-	if (file.is_open())
-	{
-		while (getline (file,line))
-		{
+	if (file.is_open()){
+		while (getline (file,line)){
 			string word;
 			istringstream buf(line);
-
-    		while(buf >> word)
-    		{
-				dicc->addAndInc(word);
-			}
+			while(buf >> word)
+				dicc.addAndInc(word);
 		}
 		file.close();
 	}
-
-	return *dicc;
+	return dicc;
 }
 
 
@@ -129,6 +133,6 @@ ConcurrentHashMap ConcurrentHashMap::count_words(unsigned int n, list<string> ar
 pair<string, unsigned int> ConcurrentHashMap::maximum(unsigned int p_archivos, 
 	                               unsigned int p_maximos, 
 	                               list<string> archs){
-	pair<string, unsigned int> asd("tujavie", 2);
+	pair<string, unsigned int> asd("tujavie", p_archivos);
 	return asd;
 }

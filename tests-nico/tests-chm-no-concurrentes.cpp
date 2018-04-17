@@ -180,3 +180,74 @@ TEST(ConcurrentHashMapTest, TestConstructorPorCopia)
 	EXPECT_EQ(otro.member("dea"), false);
 	EXPECT_EQ(otro.member("mierdaa"), false);
 }
+
+TEST(ConcurrentHashMapTest, TestDeclaroYAsignoEnLaMismaLinea)
+{
+	ConcurrentHashMap h;
+
+	h.addAndInc("trabajo");
+	h.addAndInc("practico");
+	h.addAndInc("de");
+	h.addAndInc("mierda");
+	h.addAndInc("mierda");
+	h.addAndInc("mierda");
+	h.addAndInc("mierda");
+
+	EXPECT_EQ(h.member("trabajo"), true);
+	EXPECT_EQ(h.member("practico"), true);
+	EXPECT_EQ(h.member("de"), true);
+	EXPECT_EQ(h.member("mierda"), true);
+	
+	EXPECT_EQ(h.member("trabajoa"), false);
+	EXPECT_EQ(h.member("practicoa"), false);
+	EXPECT_EQ(h.member("dea"), false);
+	EXPECT_EQ(h.member("mierdaa"), false);
+
+	ConcurrentHashMap otro = h;
+
+	EXPECT_EQ(otro.member("trabajo"), true);
+	EXPECT_EQ(otro.member("practico"), true);
+	EXPECT_EQ(otro.member("de"), true);
+	EXPECT_EQ(otro.member("mierda"), true);
+	
+	EXPECT_EQ(otro.member("trabajoa"), false);
+	EXPECT_EQ(otro.member("practicoa"), false);
+	EXPECT_EQ(otro.member("dea"), false);
+	EXPECT_EQ(otro.member("mierdaa"), false);
+}
+
+TEST(ConcurrentHashMapTest, TestDeclaroEnUnaLineaYAsignoEnOtra)
+{
+	ConcurrentHashMap h;
+
+	h.addAndInc("trabajo");
+	h.addAndInc("practico");
+	h.addAndInc("de");
+	h.addAndInc("mierda");
+	h.addAndInc("mierda");
+	h.addAndInc("mierda");
+	h.addAndInc("mierda");
+
+	EXPECT_EQ(h.member("trabajo"), true);
+	EXPECT_EQ(h.member("practico"), true);
+	EXPECT_EQ(h.member("de"), true);
+	EXPECT_EQ(h.member("mierda"), true);
+	
+	EXPECT_EQ(h.member("trabajoa"), false);
+	EXPECT_EQ(h.member("practicoa"), false);
+	EXPECT_EQ(h.member("dea"), false);
+	EXPECT_EQ(h.member("mierdaa"), false);
+
+	ConcurrentHashMap otro;
+	otro = h;
+
+	EXPECT_EQ(otro.member("trabajo"), true);
+	EXPECT_EQ(otro.member("practico"), true);
+	EXPECT_EQ(otro.member("de"), true);
+	EXPECT_EQ(otro.member("mierda"), true);
+	
+	EXPECT_EQ(otro.member("trabajoa"), false);
+	EXPECT_EQ(otro.member("practicoa"), false);
+	EXPECT_EQ(otro.member("dea"), false);
+	EXPECT_EQ(otro.member("mierdaa"), false);
+}
