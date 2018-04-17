@@ -1,4 +1,7 @@
 *.o
+tests-nico/*.o
+tests-nico/*.a
+tests-nico/tests-chm
 entregable/corpus-post
 entregable/test-chm.cpp
 entregable/test-chm
