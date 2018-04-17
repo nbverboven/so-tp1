@@ -29,7 +29,7 @@ CXXFLAGS += -g -Wall -Wextra -pedantic -pthread -std=c++11
 
 # All tests produced by this Makefile.  Remember to add new tests you
 # created to the list.
-TESTS = tests-chm-no-concurrentes
+TESTS = tests-chm
 
 
 # All Google Test headers.  Usually you shouldn't change this
@@ -75,8 +75,8 @@ gtest_main.a : gtest-all.o gtest_main.o
 ConcurrentHashMap.o : ../entregable/ConcurrentHashMap.cpp
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -O3 -c $<
 
-tests-chm-no-concurrentes.o : $(USER_DIR)/tests-chm-no-concurrentes.cpp $(GTEST_HEADERS)
+tests-chm.o : $(USER_DIR)/tests-chm.cpp $(GTEST_HEADERS)
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -O3 -c $<
 
-tests-chm-no-concurrentes : tests-chm-no-concurrentes.o ConcurrentHashMap.o gtest_main.a
+tests-chm : tests-chm.o ConcurrentHashMap.o gtest_main.a
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -O3 -lpthread $^ -o $@

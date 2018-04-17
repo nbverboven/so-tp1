@@ -1,5 +1,8 @@
 #include "ConcurrentHashMap.hpp"
 
+#define OCUPADO 1
+#define DISPONIBLE 0
+
 /****** Constructor y Destructor **********/
 
 ConcurrentHashMap::ConcurrentHashMap(){
@@ -75,26 +78,116 @@ bool ConcurrentHashMap::member(string key){
 }
 
 
+// TODO: Pensar otro nombre
+typedef struct info_aux_nico_str
+{
+	vector<unsigned int> *estado_filas;
+	vector<pair<string, unsigned int>*> *resultados;
+	Lista< pair<string, unsigned int> > *hash_map;
+
+} info_aux_nico;
+
+
 void *maximumEnFila_nico(void *info)
 {
-	
+	info_aux_nico asd = *((info_aux_nico *) info);
+	unsigned int i = 0;
+
+	while ( i < 26 )
+	{
+		// TODO: Revisar para más de 1 thread
+		if ( (*asd.estado_filas)[i] == DISPONIBLE )
+		{
+			// Para que nadie se meta en la misma fila que yo
+			(*asd.estado_filas)[i] = OCUPADO;
+
+			// Busco el elemento con más apariciones en la fila i
+			pair<string, unsigned int> elem;
+			Lista<pair<string, unsigned int>>::Iterador it = asd.hash_map[i].CrearIt();
+
+			if (it.HaySiguiente())
+			{
+				// Quiero hacer esto solamente si la lista tiene elementos
+				elem.first = it.Siguiente().first;
+				elem.second = it.Siguiente().second;
+
+				while ( it.HaySiguiente() )
+				{
+					if ( it.Siguiente().second > elem.second )
+					{
+						// Si encuentro una clave en la fila que se repite más,
+						// actualizo la solución
+						elem.first = it.Siguiente().first;
+						elem.second = it.Siguiente().second;
+					}
+
+					it.Avanzar();
+				}
+
+				// Actualizo la lista global de resultados con el de la fila
+				// que revisé
+				*((*asd.resultados)[i]) = elem;
+			}
+
+			// Si en la lista no había nada, el puntero de la lista de 
+			// resultados queda en NULL
+		}
+
+		// Veo si puedo seguir con la fila siguiente
+		++i;
+	}
+
 	return NULL;
 }
+
 
 pair<string, unsigned int> ConcurrentHashMap::maximum(unsigned int nt)
 {
 	vector<pthread_t> threads(nt);
-	std::vector<int> tids(nt);
-	int tid;
-	unsigned int filas_restantes = nt;
+	vector<int> tids(nt);
 
-	for (tid = 0; i < nt; ++i)
+	vector<pair<string, unsigned int>*> results(26, NULL);
+	vector<unsigned int> filas(26, DISPONIBLE);
+
+	unsigned int tid;
+
+	info_aux_nico aux;
+	aux.estado_filas = &filas;
+	aux.resultados = &results;
+	aux.hash_map = tabla;
+
+	for (tid = 0; tid < nt; ++tid)
 	{
 		tids[tid] = tid;
-		pthread_create(&threads[tid], NULL, )
+		pthread_create(&threads[tid], NULL, maximumEnFila_nico, &aux);
 	}
 
-	return asd;
+	for (tid = 0; tid < nt; ++tid)
+	{
+		pthread_join(threads[tid], NULL);
+	}
+
+	// Busco el elemento que más aparece posta posta
+	int i = -1;
+	for (int k = 0; k < 26; ++k)
+	{
+		if (results[k])
+		{
+			if (i < 0)
+			{
+				i = k;
+			}
+			else
+			{
+				if ( results[k]->second > results[i]->second )
+				{
+					i = k;
+				}
+			}
+		}
+	}
+
+	return *results[i];
 }
 
 
