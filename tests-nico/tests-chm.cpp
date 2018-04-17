@@ -251,3 +251,35 @@ TEST(ConcurrentHashMapTest, TestDeclaroEnUnaLineaYAsignoEnOtra)
 	EXPECT_EQ(otro.member("dea"), false);
 	EXPECT_EQ(otro.member("mierdaa"), false);
 }
+
+TEST(ConcurrentHashMap, TestMaximum1Thread)
+{
+	ConcurrentHashMap h;
+
+	h.addAndInc("arbol");
+	h.addAndInc("arbolito");
+	h.addAndInc("arbolito");
+	h.addAndInc("arbolote");
+	h.addAndInc("computadora");
+	h.addAndInc("computadora");
+	h.addAndInc("computadora");
+	h.addAndInc("computadora");
+	h.addAndInc("computadora");
+	h.addAndInc("casa");
+	h.addAndInc("casa");
+	h.addAndInc("casa");
+	h.addAndInc("mesa");
+	h.addAndInc("mesada");
+	h.addAndInc("mesada");
+	h.addAndInc("mesada");
+	h.addAndInc("silla");
+	h.addAndInc("trabajo");
+	h.addAndInc("practico");
+	h.addAndInc("de");
+	h.addAndInc("mierda");
+	h.addAndInc("je");
+	h.addAndInc("je");
+	h.addAndInc("je");
+
+	pair<string, unsigned int> res = h.maximum(1);
+}
