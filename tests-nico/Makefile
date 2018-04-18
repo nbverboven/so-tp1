@@ -73,10 +73,10 @@ gtest_main.a : gtest-all.o gtest_main.o
 # function.
 
 ConcurrentHashMap.o : ../entregable/ConcurrentHashMap.cpp
-	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -O3 -c $<
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -O0 -c $<
 
 tests-chm.o : $(USER_DIR)/tests-chm.cpp $(GTEST_HEADERS)
-	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -O3 -c $<
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -O0 -c $<
 
 tests-chm : tests-chm.o ConcurrentHashMap.o gtest_main.a
-	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -O3 -lpthread $^ -o $@
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -O0 -lpthread $^ -o $@

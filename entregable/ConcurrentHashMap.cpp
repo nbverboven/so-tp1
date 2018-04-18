@@ -79,29 +79,29 @@ bool ConcurrentHashMap::member(string key){
 // TODO: Pensar otro nombre
 typedef struct info_aux_nico_str
 {
+	unsigned int cant_threads;
+	atomic<int> *actual;
+	mutex *str_mtx;
 	vector<pair<string, unsigned int>> *resultados;
 	ConcurrentHashMap *hash_map;
-	atomic<int> *prox_fila;
-
 } info_aux_nico;
 
 
 void *maximumEnFila_nico(void *info)
 {
-	info_aux_nico asd = *((info_aux_nico *) info);
+	info_aux_nico *asd = (info_aux_nico *) info;
 
 	// Para que nadie se meta en la misma fila que yo
-	int i = asd.prox_fila->fetch_add(1);
 
-	// pthread_id_np_t tid;
-	// tid = pthread_getthreadid_np();
+	int i;
+	unsigned int kill_switch = 26/(asd->cant_threads) +1;
+	
 
-	while ( i < 26 )
+	while ( kill_switch > 0 && (i = asd->actual->fetch_add(1)) < 26 )
 	{
-	printf("Hola! Soy el thread %u. Estoy laburando en la fila: %d\n", (unsigned int) pthread_self(), i);
 		// Busco el elemento con más apariciones en la fila i
 		pair<string, unsigned int> elem;
-		Lista<pair<string, unsigned int>>::Iterador it = ((asd.hash_map)->tabla[i]).CrearIt();
+		Lista<pair<string, unsigned int>>::Iterador it = ((asd->hash_map)->tabla[i]).CrearIt();
 
 		// Quiero hacer esto solamente si la lista tiene elementos
 		if (it.HaySiguiente())
@@ -122,13 +122,12 @@ void *maximumEnFila_nico(void *info)
 
 			// Actualizo la lista global de resultados con el de la fila
 			// que revisé
-			// pair<string, unsigned int> mas_apariciones(elem.first, elem.second);
-			// (asd.resultados)->push_back(mas_apariciones);
+			asd->str_mtx->lock();
+			pair<string, unsigned int> mas_apariciones(elem.first, elem.second);
+			(asd->resultados)->push_back(mas_apariciones);
+			asd->str_mtx->unlock();
 		}
-
-		// Si en la lista no había nada, el puntero de la lista de 
-		// resultados queda en NULL
-		i = asd.prox_fila->fetch_add(1);
+		--kill_switch;
 	}
 
 	return NULL;
@@ -140,20 +139,24 @@ pair<string, unsigned int> ConcurrentHashMap::maximum(unsigned int nt)
 	vector<pthread_t> threads(nt);
 	unsigned int tid;
 
-	vector<pair<string, unsigned int>> results;
-
 	atomic<int> fila_actual(0);
+	mutex mtx;
+
+	vector<pair<string, unsigned int>> results;
 
 	info_aux_nico aux;
 	aux.resultados = &results;
 	aux.hash_map = this;
-	aux.prox_fila = &fila_actual;
+	aux.actual = &fila_actual;
+	aux.str_mtx = &mtx;
+	aux.cant_threads = nt;
 
 	for (tid = 0; tid < nt; ++tid)
 	{
 		pthread_create(&threads[tid], NULL, maximumEnFila_nico, &aux);
 	}
 
+	/* Espero a que todos terminen antes de seguir */
 	for (tid = 0; tid < nt; ++tid)
 	{
 		pthread_join(threads[tid], NULL);
@@ -162,18 +165,16 @@ pair<string, unsigned int> ConcurrentHashMap::maximum(unsigned int nt)
 	/* Busco el elemento que más aparece posta posta.
 	   Si estoy llamando a esta función, asumo que existe
 	   alguno. */
-	// pair<string, unsigned int> res = results[0];
+	pair<string, unsigned int> res = results[0];
 
-	// for (unsigned int k = 1; k < results.size(); ++k)
-	// {
-	// 	if ( results[k].second > res.second )
-	// 	{
-	// 		res = results[k];
-	// 	}
-	// }
-
-	pair<string, unsigned int> res("a",3);
-
+	for (unsigned int k = 1; k < results.size(); ++k)
+	{
+		if ( results[k].second > res.second )
+		{
+			res = results[k];
+		}
+	}
+	
 	return res;
 }
 
