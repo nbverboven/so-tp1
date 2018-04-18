@@ -218,17 +218,11 @@ ConcurrentHashMap ConcurrentHashMap::count_words(string arch){
 }
 
 
-typedef struct thread_data_countWords
-{
-	int thread_id;
-	string file;
-	ConcurrentHashMap* hash_map;
-
-} thread_data_countWords;
-
 void* CountWordsByFile_andy_mejorQueEsaFuncionBasuraDeNico(void *arguments){
-	struct thread_data_countWords *thread_data;
-   	thread_data = (struct thread_data_countWords *) arguments;
+	struct ConcurrentHashMap::thread_data_countWords *thread_data;
+   	thread_data = (struct ConcurrentHashMap::thread_data_countWords *) arguments;
+
+	cout << "Thread with id : " << thread_data->thread_id << endl;
 
 	string line;
 	ifstream file(thread_data->file);
@@ -242,6 +236,7 @@ void* CountWordsByFile_andy_mejorQueEsaFuncionBasuraDeNico(void *arguments){
 		file.close();
 	}
 
+	pthread_exit(NULL);
 }
 
 /*
@@ -256,6 +251,8 @@ ConcurrentHashMap ConcurrentHashMap::count_words(list<string> archs){
 	int cantThreads = archs.size();
 	vector<pthread_t> threads(cantThreads);
 	struct thread_data_countWords therads_data[cantThreads];
+	int tresp;
+
 
 	for (int tid = 0; tid < cantThreads; ++tid){
 		therads_data[tid].thread_id = tid;
@@ -263,11 +260,21 @@ ConcurrentHashMap ConcurrentHashMap::count_words(list<string> archs){
 		archs.pop_front();
 		therads_data[tid].hash_map = &dicc;
 
-		pthread_create(&threads[tid], NULL, CountWordsByFile_andy_mejorQueEsaFuncionBasuraDeNico, (void *)&therads_data[tid]);
+		tresp = pthread_create(&threads[tid], NULL, CountWordsByFile_andy_mejorQueEsaFuncionBasuraDeNico, (void *)&therads_data[tid]);
+
+      if (tresp) {
+         cout << "Error:unable to create thread, " << tresp << endl;
+         exit(-1);
+      }
+
 	}
 
 	for (int tid = 0; tid < cantThreads; ++tid){
-		pthread_join(threads[tid], NULL);
+		tresp = pthread_join(threads[tid], NULL);
+		if (tresp) {
+			cout << "Error:unable to join," << tresp << endl;
+         	exit(-1);
+      }
 	}
 
 	return dicc;
@@ -285,6 +292,50 @@ ConcurrentHashMap ConcurrentHashMap::count_words(list<string> archs){
 */
 ConcurrentHashMap ConcurrentHashMap::count_words(unsigned int n, list<string> archs){
 	ConcurrentHashMap dicc;
+	int cantThreads = n;
+	if(archs.size() < n)
+		cantThreads = archs.size();
+	vector<pthread_t> threads(cantThreads);
+	struct thread_data_countWords therads_data[cantThreads];
+	int tresp;
+	pthread_attr_t attr;
+   	void *status;
+
+	// Initialize and set thread joinable
+   	pthread_attr_init(&attr);
+   	pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
+
+	for (int tid = 0; tid < cantThreads; ++tid){
+		therads_data[tid].thread_id = tid;
+		therads_data[tid].file = archs.front();
+		archs.pop_front();
+		therads_data[tid].hash_map = &dicc;
+
+		 cout << "main() : creating thread, " << tid << endl;
+
+		tresp = pthread_create(&threads[tid], NULL, CountWordsByFile_andy_mejorQueEsaFuncionBasuraDeNico, (void *)&therads_data[tid]);
+		if (tresp) {
+        	cout << "Error:unable to create thread, " << tresp << endl;
+        	exit(-1);
+      	}
+	}
+
+   	// free attribute and wait for the other threads
+   	pthread_attr_destroy(&attr);
+	for (int tid = 0; tid < cantThreads; ++tid){
+		tresp = pthread_join(threads[tid], &status);
+      	if (tresp) {
+        	cout << "Error:unable to join," << tresp << endl;
+        	exit(-1);
+      	}
+      
+      	cout << "Main: completed thread id :" << tid ;
+      	cout << "  exiting with status :" << status << endl;
+	}
+	
+	cout << "Main: program exiting." << endl;
+   	pthread_exit(NULL);
+
 	return dicc;
 }
 

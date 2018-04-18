@@ -61,6 +61,14 @@ public:
 
 	ConcurrentHashMap& operator=(const ConcurrentHashMap &otro);
 
+	typedef struct thread_data_countWords
+	{
+		int thread_id;
+		string file;
+		ConcurrentHashMap* hash_map;
+
+	} thread_data_countWords;	
+
 protected:
 	// int cant_elementos;
 
@@ -68,6 +76,7 @@ protected:
 		int hash = (int)(str[0]) % 26;
 		return hash;
 	}
+
 };
 
 #endif // CONCURRENT_HASH_MAP_HPP

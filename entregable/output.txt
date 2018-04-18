@@ -1,0 +1,3 @@
+awk -f corpus.awk corpus | sort >corpus-post
+./test-2 | sort | diff -u - corpus-post
+rm -f corpus-post
