@@ -50,9 +50,9 @@ void ConcurrentHashMap::addAndInc(string key){
 	bool encontrado = false;
 	while(it.HaySiguiente() && !encontrado){
 		if(it.Siguiente().first == key){
-			//addAndInc_mtx.lock();
+			addAndInc_mtx.lock();
 			++it.Siguiente().second;
-			//addAndInc_mtx.unlock();
+			addAndInc_mtx.unlock();
 			encontrado = true;
 		}
 		it.Avanzar();
