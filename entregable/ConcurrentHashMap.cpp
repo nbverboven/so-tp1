@@ -57,7 +57,6 @@ void ConcurrentHashMap::addAndInc(string key){
 	}
 	if(!encontrado){
 		tabla[_hash].push_front(make_pair(key,1));
-		// cant_elementos++;
 	}
 }
 
@@ -77,88 +76,79 @@ bool ConcurrentHashMap::member(string key){
 
 
 // TODO: Pensar otro nombre
-typedef struct info_aux_nico_str
-{
-	unsigned int cant_threads;
+typedef struct info_aux_nico_str{
 	atomic<int> *actual;
 	mutex *str_mtx;
+	unsigned int cant_threads;
 	vector<pair<string, unsigned int>> *resultados;
 	ConcurrentHashMap *hash_map;
 } info_aux_nico;
 
 
-void *maximumEnFila_nico(void *info)
-{
+void *masAparicionesPorFila(void *info){
 	info_aux_nico *asd = (info_aux_nico *) info;
 
 	// Para que nadie se meta en la misma fila que yo
-
 	int i;
-	unsigned int kill_switch = 26/(asd->cant_threads) +1;
-	
 
-	while ( kill_switch > 0 && (i = asd->actual->fetch_add(1)) < 26 )
-	{
+	/* Uso esta variable para evitar el caso de que un thread 
+	   accede siempre primero a la variable atómica que indica 
+	   la próxima fila. Si esto pasara, hay uno solo que hace 
+	   la mayor parte del trabajo. */
+	unsigned int kill_switch = 26/(asd->cant_threads) + 1;
+	while(kill_switch > 0 && (i = asd->actual->fetch_add(1)) < 26){
 		// Busco el elemento con más apariciones en la fila i
 		pair<string, unsigned int> elem;
 		Lista<pair<string, unsigned int>>::Iterador it = ((asd->hash_map)->tabla[i]).CrearIt();
 
 		// Quiero hacer esto solamente si la lista tiene elementos
-		if (it.HaySiguiente())
-		{
+		if (it.HaySiguiente()){
 			elem = it.Siguiente();
+			while (it.HaySiguiente()){
+				if (it.Siguiente().second > elem.second){
 
-			while ( it.HaySiguiente() )
-			{
-				if ( it.Siguiente().second > elem.second )
-				{
 					// Si encuentro una clave en la fila que se repite más,
 					// actualizo la solución
 					elem = it.Siguiente();
 				}
-
 				it.Avanzar();
 			}
 
-			// Actualizo la lista global de resultados con el de la fila
-			// que revisé
+			/* Bloqueo la ejecución del resto de los threads que
+			   quieran modificar resultados al mismo tiempo que yo.
+			   Evito que se produzca una condición de carrera. */
 			asd->str_mtx->lock();
-			pair<string, unsigned int> mas_apariciones(elem.first, elem.second);
-			(asd->resultados)->push_back(mas_apariciones);
+
+			/* Actualizo la lista global de resultados con el de la fila
+			   que revisé */
+			pair<string, unsigned int> el_que_mas_aparece(elem.first, elem.second);
+			(asd->resultados)->push_back(el_que_mas_aparece);
 			asd->str_mtx->unlock();
 		}
 		--kill_switch;
 	}
-
 	return NULL;
 }
 
 
-pair<string, unsigned int> ConcurrentHashMap::maximum(unsigned int nt)
-{
+pair<string, unsigned int> ConcurrentHashMap::maximum(unsigned int nt){
 	vector<pthread_t> threads(nt);
 	unsigned int tid;
-
 	atomic<int> fila_actual(0);
 	mutex mtx;
-
 	vector<pair<string, unsigned int>> results;
-
 	info_aux_nico aux;
 	aux.resultados = &results;
 	aux.hash_map = this;
 	aux.actual = &fila_actual;
 	aux.str_mtx = &mtx;
 	aux.cant_threads = nt;
-
-	for (tid = 0; tid < nt; ++tid)
-	{
-		pthread_create(&threads[tid], NULL, maximumEnFila_nico, &aux);
+	for (tid = 0; tid < nt; ++tid){
+		pthread_create(&threads[tid], NULL, masAparicionesPorFila, &aux);
 	}
 
 	/* Espero a que todos terminen antes de seguir */
-	for (tid = 0; tid < nt; ++tid)
-	{
+	for (tid = 0; tid < nt; ++tid){
 		pthread_join(threads[tid], NULL);
 	}
 
@@ -166,15 +156,11 @@ pair<string, unsigned int> ConcurrentHashMap::maximum(unsigned int nt)
 	   Si estoy llamando a esta función, asumo que existe
 	   alguno. */
 	pair<string, unsigned int> res = results[0];
-
-	for (unsigned int k = 1; k < results.size(); ++k)
-	{
-		if ( results[k].second > res.second )
-		{
+	for (unsigned int k = 1; k < results.size(); ++k){
+		if ( results[k].second > res.second ){
 			res = results[k];
 		}
 	}
-	
 	return res;
 }
 

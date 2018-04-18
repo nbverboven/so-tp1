@@ -62,8 +62,6 @@ public:
 	ConcurrentHashMap& operator=(const ConcurrentHashMap &otro);
 
 protected:
-	// int cant_elementos;
-
 	int Hash (const string& str){
 		int hash = (int)(str[0]) % 26;
 		return hash;
