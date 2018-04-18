@@ -1,0 +1,212 @@
+0
+hendrerit 156
+hac 12
+habitasse 12
+habitant 12
+himenaeos 6
+1
+ipsum 234
+id 426
+iaculis 144
+in 606
+imperdiet 150
+interdum 186
+integer 168
+inceptos 6
+2
+justo 228
+3
+4
+lorem 258
+lacus 204
+lectus 192
+libero 132
+ligula 156
+leo 192
+laoreet 162
+lobortis 102
+lacinia 150
+luctus 120
+litora 6
+5
+maecenas 78
+molestie 114
+massa 234
+mauris 318
+morbi 144
+malesuada 168
+mollis 162
+mi 174
+magna 198
+mattis 114
+magnis 6
+montes 6
+mus 6
+maximus 132
+metus 168
+6
+non 414
+nibh 174
+nisi 168
+neque 168
+nec 420
+nunc 287
+nam 102
+nullam 138
+nisl 204
+natoque 6
+nascetur 6
+nulla 294
+netus 12
+nostra 6
+7
+ornare 174
+odio 198
+orci 216
+8
+phasellus 114
+placerat 108
+praesent 132
+pharetra 168
+pulvinar 90
+pretium 102
+porttitor 108
+penatibus 6
+parturient 6
+posuere 102
+purus 180
+proin 156
+porta 198
+pellentesque 240
+potenti 12
+platea 12
+primis 36
+per 12
+9
+quis 366
+quisque 180
+quam 197
+10
+risus 240
+rutrum 144
+ridiculus 6
+rhoncus 132
+11
+sit 420
+suscipit 186
+semper 162
+sodales 186
+sagittis 168
+sed 647
+scelerisque 108
+sem 192
+sapien 222
+sollicitudin 132
+suspendisse 144
+senectus 12
+sociosqu 6
+12
+tellus 222
+tincidunt 210
+tortor 192
+turpis 180
+tristique 156
+tempus 132
+tempor 144
+taciti 6
+torquent 6
+13
+urna 150
+ut 504
+ultrices 198
+ullamcorper 102
+ultricies 102
+14
+vel 347
+vivamus 126
+vestibulum 282
+vitae 438
+varius 114
+viverra 144
+vulputate 120
+velit 180
+volutpat 138
+venenatis 78
+vehicula 132
+15
+16
+17
+18
+19
+amet 420
+adipiscing 24
+aliquet 198
+augue 138
+at 425
+ac 444
+ante 198
+auctor 168
+aliquam 276
+a 305
+arcu 186
+accumsan 108
+aenean 126
+aptent 6
+ad 6
+20
+bibendum 114
+blandit 114
+21
+consectetur 162
+cras 132
+condimentum 174
+congue 102
+commodo 90
+consequat 144
+cursus 150
+convallis 174
+curabitur 132
+cubilia 24
+curae; 24
+class 6
+conubia 6
+22
+dolor 240
+dictum 174
+dignissim 120
+diam 228
+duis 150
+donec 210
+dui 198
+dapibus 180
+dis 6
+dictumst 12
+23
+elit 240
+etiam 144
+euismod 120
+et 540
+egestas 168
+eu 450
+eget 336
+ex 234
+erat 216
+enim 186
+eros 234
+elementum 120
+efficitur 168
+eleifend 144
+est 192
+24
+felis 210
+facilisis 192
+finibus 138
+fermentum 84
+feugiat 138
+faucibus 168
+fringilla 108
+fusce 102
+facilisi 12
+fames 24
+25
+gravida 168

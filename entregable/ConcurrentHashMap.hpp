@@ -61,15 +61,22 @@ public:
 
 	ConcurrentHashMap& operator=(const ConcurrentHashMap &otro);
 
-	typedef struct thread_data_countWords
-	{
+	typedef struct thread_data_countWords {
 		int thread_id;
 		string file;
 		ConcurrentHashMap* hash_map;
+	} thread_data_countWords;
 
-	} thread_data_countWords;	
+	typedef struct thread_data_countWords_mutex {
+		list<string> files;
+		mutex getNextFile;
+		ConcurrentHashMap* hash_map;
+	} thread_data_countWords_mutex;
 
 protected:
+
+	mutex addAndInc_mtx;
+
 	int Hash (const string& str){
 		int hash = (int)(str[0]) % 26;
 		return hash;
