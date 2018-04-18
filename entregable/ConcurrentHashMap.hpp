@@ -19,7 +19,7 @@ using namespace std;
 class ConcurrentHashMap
 {
 public:
-	Lista< pair<string, unsigned int> > *tabla;
+	Lista<pair<string, unsigned int>> *tabla;
 
 	ConcurrentHashMap();
 	ConcurrentHashMap(ConcurrentHashMap &chm);
@@ -70,8 +70,6 @@ public:
 	} thread_data_countWords;	
 
 protected:
-	// int cant_elementos;
-
 	int Hash (const string& str){
 		int hash = (int)(str[0]) % 26;
 		return hash;

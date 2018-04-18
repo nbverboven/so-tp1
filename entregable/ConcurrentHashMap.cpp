@@ -1,8 +1,5 @@
 #include "ConcurrentHashMap.hpp"
 
-#define OCUPADO 1
-#define DISPONIBLE 0
-
 /****** Constructor y Destructor **********/
 
 ConcurrentHashMap::ConcurrentHashMap(){
@@ -60,7 +57,6 @@ void ConcurrentHashMap::addAndInc(string key){
 	}
 	if(!encontrado){
 		tabla[_hash].push_front(make_pair(key,1));
-		// cant_elementos++;
 	}
 }
 
@@ -80,115 +76,92 @@ bool ConcurrentHashMap::member(string key){
 
 
 // TODO: Pensar otro nombre
-typedef struct info_aux_nico_str
-{
-	vector<unsigned int> *estado_filas;
-	vector<pair<string, unsigned int>*> *resultados;
-	Lista< pair<string, unsigned int> > *hash_map;
-
+typedef struct info_aux_nico_str{
+	atomic<int> *actual;
+	mutex *str_mtx;
+	unsigned int cant_threads;
+	vector<pair<string, unsigned int>> *resultados;
+	ConcurrentHashMap *hash_map;
 } info_aux_nico;
 
 
-void *maximumEnFila_nico(void *info)
-{
-	info_aux_nico asd = *((info_aux_nico *) info);
-	unsigned int i = 0;
+void *masAparicionesPorFila(void *info){
+	info_aux_nico *asd = (info_aux_nico *) info;
 
-	while ( i < 26 )
-	{
-		// TODO: Revisar para más de 1 thread
-		if ( (*asd.estado_filas)[i] == DISPONIBLE )
-		{
-			// Para que nadie se meta en la misma fila que yo
-			(*asd.estado_filas)[i] = OCUPADO;
+	// Para que nadie se meta en la misma fila que yo
+	int i;
 
-			// Busco el elemento con más apariciones en la fila i
-			pair<string, unsigned int> elem;
-			Lista<pair<string, unsigned int>>::Iterador it = asd.hash_map[i].CrearIt();
+	/* Uso esta variable para evitar el caso de que un thread 
+	   accede siempre primero a la variable atómica que indica 
+	   la próxima fila. Si esto pasara, hay uno solo que hace 
+	   la mayor parte del trabajo. */
+	unsigned int kill_switch = 26/(asd->cant_threads) + 1;
+	while(kill_switch > 0 && (i = asd->actual->fetch_add(1)) < 26){
+		// Busco el elemento con más apariciones en la fila i
+		pair<string, unsigned int> elem;
+		Lista<pair<string, unsigned int>>::Iterador it = ((asd->hash_map)->tabla[i]).CrearIt();
 
-			if (it.HaySiguiente())
-			{
-				// Quiero hacer esto solamente si la lista tiene elementos
-				elem.first = it.Siguiente().first;
-				elem.second = it.Siguiente().second;
+		// Quiero hacer esto solamente si la lista tiene elementos
+		if (it.HaySiguiente()){
+			elem = it.Siguiente();
+			while (it.HaySiguiente()){
+				if (it.Siguiente().second > elem.second){
 
-				while ( it.HaySiguiente() )
-				{
-					if ( it.Siguiente().second > elem.second )
-					{
-						// Si encuentro una clave en la fila que se repite más,
-						// actualizo la solución
-						elem.first = it.Siguiente().first;
-						elem.second = it.Siguiente().second;
-					}
-
-					it.Avanzar();
+					// Si encuentro una clave en la fila que se repite más,
+					// actualizo la solución
+					elem = it.Siguiente();
 				}
-
-				// Actualizo la lista global de resultados con el de la fila
-				// que revisé
-				*((*asd.resultados)[i]) = elem;
+				it.Avanzar();
 			}
 
-			// Si en la lista no había nada, el puntero de la lista de 
-			// resultados queda en NULL
+			/* Bloqueo la ejecución del resto de los threads que
+			   quieran modificar resultados al mismo tiempo que yo.
+			   Evito que se produzca una condición de carrera. */
+			asd->str_mtx->lock();
+
+			/* Actualizo la lista global de resultados con el de la fila
+			   que revisé */
+			pair<string, unsigned int> el_que_mas_aparece(elem.first, elem.second);
+			(asd->resultados)->push_back(el_que_mas_aparece);
+			asd->str_mtx->unlock();
 		}
-
-		// Veo si puedo seguir con la fila siguiente
-		++i;
+		--kill_switch;
 	}
-
 	return NULL;
 }
 
 
-pair<string, unsigned int> ConcurrentHashMap::maximum(unsigned int nt)
-{
+pair<string, unsigned int> ConcurrentHashMap::maximum(unsigned int nt){
 	vector<pthread_t> threads(nt);
-	vector<int> tids(nt);
-
-	vector<pair<string, unsigned int>*> results(26, NULL);
-	vector<unsigned int> filas(26, DISPONIBLE);
-
 	unsigned int tid;
-
+	atomic<int> fila_actual(0);
+	mutex mtx;
+	vector<pair<string, unsigned int>> results;
 	info_aux_nico aux;
-	aux.estado_filas = &filas;
 	aux.resultados = &results;
-	aux.hash_map = tabla;
-
-	for (tid = 0; tid < nt; ++tid)
-	{
-		tids[tid] = tid;
-		pthread_create(&threads[tid], NULL, maximumEnFila_nico, &aux);
+	aux.hash_map = this;
+	aux.actual = &fila_actual;
+	aux.str_mtx = &mtx;
+	aux.cant_threads = nt;
+	for (tid = 0; tid < nt; ++tid){
+		pthread_create(&threads[tid], NULL, masAparicionesPorFila, &aux);
 	}
 
-	for (tid = 0; tid < nt; ++tid)
-	{
+	/* Espero a que todos terminen antes de seguir */
+	for (tid = 0; tid < nt; ++tid){
 		pthread_join(threads[tid], NULL);
 	}
 
-	// Busco el elemento que más aparece posta posta
-	int i = -1;
-	for (int k = 0; k < 26; ++k)
-	{
-		if (results[k])
-		{
-			if (i < 0)
-			{
-				i = k;
-			}
-			else
-			{
-				if ( results[k]->second > results[i]->second )
-				{
-					i = k;
-				}
-			}
+	/* Busco el elemento que más aparece posta posta.
+	   Si estoy llamando a esta función, asumo que existe
+	   alguno. */
+	pair<string, unsigned int> res = results[0];
+	for (unsigned int k = 1; k < results.size(); ++k){
+		if ( results[k].second > res.second ){
+			res = results[k];
 		}
 	}
-
-	return *results[i];
+	return res;
 }
 
 
