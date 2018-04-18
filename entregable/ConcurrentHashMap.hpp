@@ -19,7 +19,7 @@ using namespace std;
 class ConcurrentHashMap
 {
 public:
-	Lista< pair<string, unsigned int> > *tabla;
+	Lista<pair<string, unsigned int>> *tabla;
 
 	ConcurrentHashMap();
 	ConcurrentHashMap(ConcurrentHashMap &chm);

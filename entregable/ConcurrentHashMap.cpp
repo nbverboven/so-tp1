@@ -1,8 +1,5 @@
 #include "ConcurrentHashMap.hpp"
 
-#define OCUPADO 1
-#define DISPONIBLE 0
-
 /****** Constructor y Destructor **********/
 
 ConcurrentHashMap::ConcurrentHashMap(){
@@ -82,9 +79,9 @@ bool ConcurrentHashMap::member(string key){
 // TODO: Pensar otro nombre
 typedef struct info_aux_nico_str
 {
-	vector<unsigned int> *estado_filas;
-	vector<pair<string, unsigned int>*> *resultados;
+	vector<pair<string, unsigned int>> *resultados;
 	ConcurrentHashMap *hash_map;
+	atomic<int> *prox_fila;
 
 } info_aux_nico;
 
@@ -92,50 +89,46 @@ typedef struct info_aux_nico_str
 void *maximumEnFila_nico(void *info)
 {
 	info_aux_nico asd = *((info_aux_nico *) info);
-	unsigned int i = 0;
+
+	// Para que nadie se meta en la misma fila que yo
+	int i = asd.prox_fila->fetch_add(1);
+
+	// pthread_id_np_t tid;
+	// tid = pthread_getthreadid_np();
 
 	while ( i < 26 )
 	{
-		// TODO: Revisar para más de 1 thread
-		if ( (*asd.estado_filas)[i] == DISPONIBLE )
+	printf("Hola! Soy el thread %u. Estoy laburando en la fila: %d\n", (unsigned int) pthread_self(), i);
+		// Busco el elemento con más apariciones en la fila i
+		pair<string, unsigned int> elem;
+		Lista<pair<string, unsigned int>>::Iterador it = ((asd.hash_map)->tabla[i]).CrearIt();
+
+		// Quiero hacer esto solamente si la lista tiene elementos
+		if (it.HaySiguiente())
 		{
-			// Para que nadie se meta en la misma fila que yo
-			(*asd.estado_filas)[i] = OCUPADO;
+			elem = it.Siguiente();
 
-			// Busco el elemento con más apariciones en la fila i
-			pair<string, unsigned int> elem;
-			Lista<pair<string, unsigned int>>::Iterador it = ((asd.hash_map)->tabla[i]).CrearIt();
-
-			if (it.HaySiguiente())
+			while ( it.HaySiguiente() )
 			{
-				// Quiero hacer esto solamente si la lista tiene elementos
-				elem.first = it.Siguiente().first;
-				elem.second = it.Siguiente().second;
-
-				while ( it.HaySiguiente() )
+				if ( it.Siguiente().second > elem.second )
 				{
-					if ( it.Siguiente().second > elem.second )
-					{
-						// Si encuentro una clave en la fila que se repite más,
-						// actualizo la solución
-						elem.first = it.Siguiente().first;
-						elem.second = it.Siguiente().second;
-					}
-
-					it.Avanzar();
+					// Si encuentro una clave en la fila que se repite más,
+					// actualizo la solución
+					elem = it.Siguiente();
 				}
 
-				// Actualizo la lista global de resultados con el de la fila
-				// que revisé
-				(*asd.resultados)[i] = new pair<string, unsigned int>(elem.first, elem.second);
+				it.Avanzar();
 			}
 
-			// Si en la lista no había nada, el puntero de la lista de 
-			// resultados queda en NULL
+			// Actualizo la lista global de resultados con el de la fila
+			// que revisé
+			// pair<string, unsigned int> mas_apariciones(elem.first, elem.second);
+			// (asd.resultados)->push_back(mas_apariciones);
 		}
 
-		// Veo si puedo seguir con la fila siguiente
-		++i;
+		// Si en la lista no había nada, el puntero de la lista de 
+		// resultados queda en NULL
+		i = asd.prox_fila->fetch_add(1);
 	}
 
 	return NULL;
@@ -145,21 +138,19 @@ void *maximumEnFila_nico(void *info)
 pair<string, unsigned int> ConcurrentHashMap::maximum(unsigned int nt)
 {
 	vector<pthread_t> threads(nt);
-	vector<int> tids(nt);
-
-	vector<pair<string, unsigned int>*> results(26, NULL);
-	vector<unsigned int> filas(26, DISPONIBLE);
-
 	unsigned int tid;
 
+	vector<pair<string, unsigned int>> results;
+
+	atomic<int> fila_actual(0);
+
 	info_aux_nico aux;
-	aux.estado_filas = &filas;
 	aux.resultados = &results;
 	aux.hash_map = this;
+	aux.prox_fila = &fila_actual;
 
 	for (tid = 0; tid < nt; ++tid)
 	{
-		tids[tid] = tid;
 		pthread_create(&threads[tid], NULL, maximumEnFila_nico, &aux);
 	}
 
@@ -168,27 +159,22 @@ pair<string, unsigned int> ConcurrentHashMap::maximum(unsigned int nt)
 		pthread_join(threads[tid], NULL);
 	}
 
-	// Busco el elemento que más aparece posta posta
-	int i = -1;
-	for (int k = 0; k < 26; ++k)
-	{
-		if (results[k])
-		{
-			if (i < 0)
-			{
-				i = k;
-			}
-			else
-			{
-				if ( results[k]->second > results[i]->second )
-				{
-					i = k;
-				}
-			}
-		}
-	}
+	/* Busco el elemento que más aparece posta posta.
+	   Si estoy llamando a esta función, asumo que existe
+	   alguno. */
+	// pair<string, unsigned int> res = results[0];
 
-	return *(results[i]);
+	// for (unsigned int k = 1; k < results.size(); ++k)
+	// {
+	// 	if ( results[k].second > res.second )
+	// 	{
+	// 		res = results[k];
+	// 	}
+	// }
+
+	pair<string, unsigned int> res("a",3);
+
+	return res;
 }
 
 
