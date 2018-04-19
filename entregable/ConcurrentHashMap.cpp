@@ -50,7 +50,9 @@ void ConcurrentHashMap::addAndInc(string key){
 	bool encontrado = false;
 	while(it.HaySiguiente() && !encontrado){
 		if(it.Siguiente().first == key){
+			addAndInc_mtx.lock();
 			++it.Siguiente().second;
+			addAndInc_mtx.unlock();
 			encontrado = true;
 		}
 		it.Avanzar();
@@ -188,17 +190,11 @@ ConcurrentHashMap ConcurrentHashMap::count_words(string arch){
 }
 
 
-typedef struct thread_data_countWords
-{
-	int thread_id;
-	string file;
-	ConcurrentHashMap* hash_map;
+void* CountWordsByFile(void *arguments){
+	struct ConcurrentHashMap::thread_data_countWords *thread_data;
+   	thread_data = (struct ConcurrentHashMap::thread_data_countWords *) arguments;
 
-} thread_data_countWords;
-
-void* CountWordsByFile_andy_mejorQueEsaFuncionBasuraDeNico(void *arguments){
-	struct thread_data_countWords *thread_data;
-   	thread_data = (struct thread_data_countWords *) arguments;
+	//cout << "Thread with id : " << thread_data->thread_id << endl;
 
 	string line;
 	ifstream file(thread_data->file);
@@ -212,6 +208,7 @@ void* CountWordsByFile_andy_mejorQueEsaFuncionBasuraDeNico(void *arguments){
 		file.close();
 	}
 
+	pthread_exit(NULL);
 }
 
 /*
@@ -226,6 +223,8 @@ ConcurrentHashMap ConcurrentHashMap::count_words(list<string> archs){
 	int cantThreads = archs.size();
 	vector<pthread_t> threads(cantThreads);
 	struct thread_data_countWords therads_data[cantThreads];
+	int tresp;
+
 
 	for (int tid = 0; tid < cantThreads; ++tid){
 		therads_data[tid].thread_id = tid;
@@ -233,14 +232,60 @@ ConcurrentHashMap ConcurrentHashMap::count_words(list<string> archs){
 		archs.pop_front();
 		therads_data[tid].hash_map = &dicc;
 
-		pthread_create(&threads[tid], NULL, CountWordsByFile_andy_mejorQueEsaFuncionBasuraDeNico, (void *)&therads_data[tid]);
+		tresp = pthread_create(&threads[tid], NULL, CountWordsByFile, (void *)&therads_data[tid]);
+
+      if (tresp) {
+         //cout << "Error:unable to create thread, " << tresp << endl;
+         exit(-1);
+      }
+
 	}
 
 	for (int tid = 0; tid < cantThreads; ++tid){
-		pthread_join(threads[tid], NULL);
+		tresp = pthread_join(threads[tid], NULL);
+		if (tresp) {
+			//cout << "Error:unable to join," << tresp << endl;
+         	exit(-1);
+      }
 	}
 
 	return dicc;
+}
+
+void* CountWordsByFileList(void *arguments){
+	struct ConcurrentHashMap::thread_data_countWords_mutex *thread_data;
+   	thread_data = (struct ConcurrentHashMap::thread_data_countWords_mutex *) arguments;
+	string filename;
+	bool hasFile = true;
+	//cout << "Thread with id : " << pthread_self() << endl;
+
+	while(hasFile){
+		thread_data->getNextFile.lock(); //Mutex, entro zona critica
+		if(thread_data->files.empty()){
+			hasFile = false;
+		}else {
+			filename = thread_data->files.front();
+			thread_data->files.pop_front();
+		}
+		thread_data->getNextFile.unlock(); //Mutex, salgo zona critica
+
+		if(hasFile){
+			//cout << "Thread with id:" << pthread_self() << " use file: " << filename << endl;
+			string line;
+			ifstream file(filename);
+			if (file.is_open()){
+				while (getline (file,line)){
+					string word;
+					istringstream buf(line);
+					while(buf >> word)
+						thread_data->hash_map->addAndInc(word);
+				}
+				file.close();
+			}
+		}
+	}
+
+	pthread_exit(NULL);
 }
 
 
@@ -255,6 +300,44 @@ ConcurrentHashMap ConcurrentHashMap::count_words(list<string> archs){
 */
 ConcurrentHashMap ConcurrentHashMap::count_words(unsigned int n, list<string> archs){
 	ConcurrentHashMap dicc;
+	int cantThreads = n;
+	if(archs.size() < n)
+		cantThreads = archs.size();
+	vector<pthread_t> threads(cantThreads);
+	int tresp;
+	pthread_attr_t attr;
+   	void *status;
+
+	struct thread_data_countWords_mutex therads_data;
+	therads_data.files = archs;
+	therads_data.hash_map = &dicc;
+
+	// Initialize and set thread joinable
+   	pthread_attr_init(&attr);
+   	pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
+
+	for (int tid = 0; tid < cantThreads; ++tid){
+		//cout << "main() : creating thread, " << tid << endl;
+		tresp = pthread_create(&threads[tid], NULL, CountWordsByFileList, (void *)&therads_data);
+		if (tresp) {
+			//cout << "Error:unable to create thread, " << tresp << endl;
+			exit(-1);
+		}
+	}
+
+	// free attribute and wait for the other threads
+	pthread_attr_destroy(&attr);
+	for (int tid = 0; tid < cantThreads; ++tid){
+		tresp = pthread_join(threads[tid], &status);
+		if (tresp) {
+			//cout << "Error:unable to join," << tresp << endl;
+			exit(-1);
+		}
+
+		//cout << "Main: completed thread id :" << tid << "  exiting with status :" << status << endl;
+	}
+	//cout << "Main: program exiting." << endl;
+   	
 	return dicc;
 }
 
