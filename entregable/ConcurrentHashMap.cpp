@@ -227,7 +227,6 @@ ConcurrentHashMap ConcurrentHashMap::count_words(list<string> archs){
 	thread_data_countWords therads_data[cantThreads];
 	int tresp;
 
-
 	for (int tid = 0; tid < cantThreads; ++tid){
 		therads_data[tid].thread_id = tid;
 		therads_data[tid].file = archs.front();
@@ -237,7 +236,6 @@ ConcurrentHashMap ConcurrentHashMap::count_words(list<string> archs){
 		tresp = pthread_create(&threads[tid], NULL, ConcurrentHashMap::CountWordsByFile, (void *)&therads_data[tid]);
 
       if (tresp) {
-         //cout << "Error:unable to create thread, " << tresp << endl;
          exit(-1);
       }
 	}
@@ -245,7 +243,6 @@ ConcurrentHashMap ConcurrentHashMap::count_words(list<string> archs){
 	for (int tid = 0; tid < cantThreads; ++tid){
 		tresp = pthread_join(threads[tid], NULL);
 		if (tresp) {
-			//cout << "Error:unable to join," << tresp << endl;
          	exit(-1);
       }
 	}
@@ -424,6 +421,7 @@ pair<string, unsigned int> ConcurrentHashMap::maximum(unsigned int p_archivos,
 
 	// Calculo el máximo de la combinación de HashMaps
 	pair<string, unsigned int> solucion = h.maximum(p_maximos);
+	
 	return solucion;
 }
 
