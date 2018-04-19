@@ -240,7 +240,6 @@ ConcurrentHashMap ConcurrentHashMap::count_words(list<string> archs){
          //cout << "Error:unable to create thread, " << tresp << endl;
          exit(-1);
       }
-
 	}
 
 	for (int tid = 0; tid < cantThreads; ++tid){
@@ -259,7 +258,6 @@ void* ConcurrentHashMap::CountWordsByFileList(void *arguments){
    	thread_data = (struct ConcurrentHashMap::thread_data_countWords_mutex *) arguments;
 	string filename;
 	bool hasFile = true;
-	//cout << "Thread with id : " << pthread_self() << endl;
 
 	while(hasFile){
 		thread_data->getNextFile.lock(); //Mutex, entro zona critica
@@ -272,7 +270,6 @@ void* ConcurrentHashMap::CountWordsByFileList(void *arguments){
 		thread_data->getNextFile.unlock(); //Mutex, salgo zona critica
 
 		if(hasFile){
-			//cout << "Thread with id:" << pthread_self() << " use file: " << filename << endl;
 			string line;
 			ifstream file(filename);
 			if (file.is_open()){
@@ -319,10 +316,8 @@ ConcurrentHashMap ConcurrentHashMap::count_words(unsigned int n, list<string> ar
    	pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
 
 	for (int tid = 0; tid < cantThreads; ++tid){
-		//cout << "main() : creating thread, " << tid << endl;
 		tresp = pthread_create(&threads[tid], NULL, ConcurrentHashMap::CountWordsByFileList, (void *)&therads_data);
 		if (tresp) {
-			//cout << "Error:unable to create thread, " << tresp << endl;
 			exit(-1);
 		}
 	}
@@ -332,13 +327,10 @@ ConcurrentHashMap ConcurrentHashMap::count_words(unsigned int n, list<string> ar
 	for (int tid = 0; tid < cantThreads; ++tid){
 		tresp = pthread_join(threads[tid], &status);
 		if (tresp) {
-			//cout << "Error:unable to join," << tresp << endl;
 			exit(-1);
 		}
 
-		//cout << "Main: completed thread id :" << tid << "  exiting with status :" << status << endl;
 	}
-	//cout << "Main: program exiting." << endl;
    	
 	return dicc;
 }
