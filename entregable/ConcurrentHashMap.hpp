@@ -23,7 +23,6 @@ public:
 
 	ConcurrentHashMap();
 	ConcurrentHashMap(const ConcurrentHashMap &chm);
-	ConcurrentHashMap(ConcurrentHashMap &chm);
 	~ConcurrentHashMap();
 
 	/*
@@ -78,10 +77,13 @@ protected:
 
 	mutex addAndInc_mtx;
 
-	int Hash (const string& str){
+	static int Hash (const string& str){
 		int hash = (int)(str[0]) % 26;
 		return hash;
 	}
+
+private:
+	void agregarTodosLosElem(const ConcurrentHashMap &otro);
 
 };
 

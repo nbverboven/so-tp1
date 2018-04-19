@@ -12,19 +12,8 @@ ConcurrentHashMap::ConcurrentHashMap(const ConcurrentHashMap &chm){
 	for (int i = 0; i < 26; ++i){
 		Lista< pair<string, unsigned int> >::Iterador it = chm.tabla[i].CrearIt();
 		while(it.HaySiguiente()){
-			addAndInc(it.Siguiente().first);
-			it.Avanzar();
-		}
-	}
-}
-
-
-ConcurrentHashMap::ConcurrentHashMap(ConcurrentHashMap &chm){
-	tabla = new Lista<pair<string, unsigned int>>[26];
-	for (int i = 0; i < 26; ++i){
-		Lista< pair<string, unsigned int> >::Iterador it = chm.tabla[i].CrearIt();
-		while(it.HaySiguiente()){
-			addAndInc(it.Siguiente().first);
+			for(unsigned int l=0; l<it.Siguiente().second; ++l)
+				addAndInc(it.Siguiente().first);
 			it.Avanzar();
 		}
 	}
@@ -44,7 +33,7 @@ ConcurrentHashMap& ConcurrentHashMap::operator=(const ConcurrentHashMap &chm){
 	for (int i = 0; i < 26; ++i){
 		Lista< pair<string, unsigned int> >::Iterador it = chm.tabla[i].CrearIt();
 		while(it.HaySiguiente()){
-			for(int l=0; l<it.Siguiente().second; ++l)
+			for(unsigned int l=0; l<it.Siguiente().second; ++l)
 				addAndInc(it.Siguiente().first);
 			it.Avanzar();
 		}
@@ -234,7 +223,7 @@ ConcurrentHashMap ConcurrentHashMap::count_words(list<string> archs){
 	ConcurrentHashMap dicc;
 	int cantThreads = archs.size();
 	vector<pthread_t> threads(cantThreads);
-	struct thread_data_countWords therads_data[cantThreads];
+	thread_data_countWords therads_data[cantThreads];
 	int tresp;
 
 
@@ -320,7 +309,7 @@ ConcurrentHashMap ConcurrentHashMap::count_words(unsigned int n, list<string> ar
 	pthread_attr_t attr;
    	void *status;
 
-	struct thread_data_countWords_mutex therads_data;
+	thread_data_countWords_mutex therads_data;
 	therads_data.files = archs;
 	therads_data.hash_map = &dicc;
 
@@ -359,36 +348,31 @@ typedef struct info_maximum_static_read_str
 	atomic<int> *actual;
 	mutex mtx;
 	vector<ConcurrentHashMap> *resultados;
-	vector<string> *archivos_a_leer;
+	vector<string> archivos_a_leer;
 	unsigned int cant_threads;
-
 } info_maximum_static_read;
 
 
 void *leoArchivos(void *info)
 {
 	info_maximum_static_read *datos = (info_maximum_static_read *) info;
-
 	int i;
-
-	int cant_archivos = 2;// datos->archivos_a_leer->size();
-
-
+	int cant_archivos = datos->archivos_a_leer.size();
 	unsigned int kill_switch = cant_archivos/(datos->cant_threads) + 1;
 
 	while (kill_switch > 0 && (i = datos->actual->fetch_add(1)) < cant_archivos)
 	{
-		// ConcurrentHashMap *h = new ConcurrentHashMap();
-		// list<string>::iterator it = (datos->archivos_a_leer)->begin();
-		// it = next(it, i);
-		// *h = ConcurrentHashMap::count_words(*it);
+		ConcurrentHashMap h;
+		string str = datos->archivos_a_leer[i];
+
+		h = ConcurrentHashMap::count_words(str);
 
 		datos->mtx.lock();
-
 		/* Actualizo la lista global de resultados con el del archivo
 		   que revisé */
-		// (datos->resultados)->push_back(*h);
+		(datos->resultados)->push_back(h);
 		datos->mtx.unlock();
+		--kill_switch;
 	}
 
 	return NULL;
@@ -401,21 +385,22 @@ pair<string, unsigned int> ConcurrentHashMap::maximum(unsigned int p_archivos,
 {
 	vector<pthread_t> threads_leyendo_archivos(p_archivos);
 	vector<ConcurrentHashMap> archivos_leidos;
-	vector<string> archivos;
+	atomic<int> siguiente_archivo(0);
+	vector<string> archivos_fuente;
 
 	list<string>::iterator it;
 	for (it = archs.begin(); it != archs.end(); ++it)
 	{
-		archivos.push_back(*it);
+		archivos_fuente.push_back(*it);
 	}
 
-	info_maximum_static_read thread_data_read;
-	thread_data_read.resultados = &archivos_leidos;
-	thread_data_read.archivos_a_leer = &archivos;
-	thread_data_read.cant_threads = p_archivos;
-
-	atomic<int> siguiente_archivo(0);
 	unsigned int tid;
+
+	info_maximum_static_read thread_data_read;
+	thread_data_read.actual = &siguiente_archivo;
+	thread_data_read.resultados = &archivos_leidos;
+	thread_data_read.archivos_a_leer = archivos_fuente;
+	thread_data_read.cant_threads = p_archivos;
 
 	for (tid = 0; tid < p_archivos; ++tid)
 	{
@@ -428,7 +413,29 @@ pair<string, unsigned int> ConcurrentHashMap::maximum(unsigned int p_archivos,
 		pthread_join(threads_leyendo_archivos[tid], NULL);
 	}
 
+	// h va a contener toda la información de archivos_leidos
+	ConcurrentHashMap h;
+	for (uint k = 0; k < archivos_leidos.size(); ++k)
+	{
+		h.agregarTodosLosElem(archivos_leidos[k]);
+	}
 
-	pair<string, unsigned int> asd("a",20);
-	return asd;
+	pair<string, unsigned int> solucion = h.maximum(p_maximos);
+
+	return solucion;
+}
+
+
+
+
+void ConcurrentHashMap::agregarTodosLosElem(const ConcurrentHashMap &otro)
+{
+	for (int i = 0; i < 26; ++i){
+		Lista< pair<string, unsigned int> >::Iterador it = otro.tabla[i].CrearIt();
+		while(it.HaySiguiente()){
+			for(unsigned int l=0; l<it.Siguiente().second; ++l)
+				addAndInc(it.Siguiente().first);
+			it.Avanzar();
+		}
+	}
 }
