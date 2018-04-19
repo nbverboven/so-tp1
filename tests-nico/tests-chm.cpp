@@ -290,11 +290,9 @@ TEST(ConcurrentHashMapMaximum, Test1Thread)
 
 TEST(ConcurrentHashMapMaximum, TestMasDe1Thread)
 {
-	for (int i = 0; i < 2000; ++i)
+	for (int i = 0; i < 1000; ++i)
 	{
 		ConcurrentHashMap h;
-
-		// h = ConcurrentHashMap::count_words("../entregable/corpus");
 
 		h.addAndInc("arbol");
 		h.addAndInc("arbolito");
@@ -375,3 +373,14 @@ TEST(ConcurrentHashMapMaximum, TestMasThreadsQueFilas)
 		EXPECT_EQ(h.maximum(27), asd);
 	}
 }
+
+TEST(ConcurrentHashMapMaximumPostaPosta, Test1ThreadParaLeerY1ThreadParaCalcular)
+{
+	ConcurrentHashMap h;
+
+	list<string> archs = {"input_text", "input_text2", "input_text3", "input_text4"};
+
+	ConcurrentHashMap::maximum(1, 3, archs);
+}
+
+

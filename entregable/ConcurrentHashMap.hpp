@@ -22,6 +22,7 @@ public:
 	Lista<pair<string, unsigned int>> *tabla;
 
 	ConcurrentHashMap();
+	ConcurrentHashMap(const ConcurrentHashMap &chm);
 	ConcurrentHashMap(ConcurrentHashMap &chm);
 	~ConcurrentHashMap();
 

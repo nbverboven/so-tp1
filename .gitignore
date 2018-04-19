@@ -11,4 +11,5 @@ entregable/test-5
 entregable/corpus-*
 entregable/output
 entregable/output.*
+tests-nico/input_text*
 tests-nico/tests-chm-no-concurrentes
