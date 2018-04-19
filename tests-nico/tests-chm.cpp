@@ -286,7 +286,6 @@ TEST(ConcurrentHashMapMaximum, Test1Thread)
 		pair<string, unsigned int> asd("computadora", 5);
 		EXPECT_EQ(h.maximum(1), asd);
 	}
-
 }
 
 TEST(ConcurrentHashMapMaximum, TestMasDe1Thread)
@@ -330,5 +329,49 @@ TEST(ConcurrentHashMapMaximum, TestMasDe1Thread)
 		pair<string, unsigned int> asd("computadora", 6);
 
 		EXPECT_EQ(h.maximum(5), asd);
+	}
+}
+
+TEST(ConcurrentHashMapMaximum, TestMasThreadsQueFilas)
+{
+	for (int i = 0; i < 2000; ++i)
+	{
+		ConcurrentHashMap h;
+
+		// h = ConcurrentHashMap::count_words("../entregable/corpus");
+
+		h.addAndInc("arbol");
+		h.addAndInc("arbolito");
+		h.addAndInc("arbolito");
+		h.addAndInc("arbolito");
+		h.addAndInc("arbolito");
+		h.addAndInc("arbolito");
+		h.addAndInc("arbolote");
+		h.addAndInc("computadora");
+		h.addAndInc("computadora");
+		h.addAndInc("computadora");
+		h.addAndInc("computadora");
+		h.addAndInc("computadora");
+		h.addAndInc("computadora");
+		h.addAndInc("casa");
+		h.addAndInc("casa");
+		h.addAndInc("casa");
+		h.addAndInc("mesa");
+		h.addAndInc("mesada");
+		h.addAndInc("mesada");
+		h.addAndInc("mesada");
+		h.addAndInc("silla");
+		h.addAndInc("trabajo");
+		h.addAndInc("practico");
+		h.addAndInc("de");
+		h.addAndInc("mierda");
+		h.addAndInc("je");
+		h.addAndInc("je");
+		h.addAndInc("je");
+
+		// pair<string, unsigned int> asdd("arbolito", 6);
+		pair<string, unsigned int> asd("computadora", 6);
+
+		EXPECT_EQ(h.maximum(27), asd);
 	}
 }

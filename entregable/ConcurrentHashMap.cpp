@@ -75,31 +75,28 @@ bool ConcurrentHashMap::member(string key){
 }
 
 
-// TODO: Pensar otro nombre
-typedef struct info_aux_nico_str{
+typedef struct info_maximum_no_static_str{
 	atomic<int> *actual;
-	mutex *str_mtx;
+	mutex mtx;
 	unsigned int cant_threads;
 	vector<pair<string, unsigned int>> *resultados;
 	ConcurrentHashMap *hash_map;
-} info_aux_nico;
+} info_maximum_no_static;
 
 
 void *masAparicionesPorFila(void *info){
-	info_aux_nico *asd = (info_aux_nico *) info;
-
-	// Para que nadie se meta en la misma fila que yo
+	info_maximum_no_static *datos = (info_maximum_no_static *) info;
 	int i;
 
 	/* Uso esta variable para evitar el caso de que un thread 
 	   accede siempre primero a la variable atómica que indica 
 	   la próxima fila. Si esto pasara, hay uno solo que hace 
 	   la mayor parte del trabajo. */
-	unsigned int kill_switch = 26/(asd->cant_threads) + 1;
-	while(kill_switch > 0 && (i = asd->actual->fetch_add(1)) < 26){
+	unsigned int kill_switch = 26/(datos->cant_threads) + 1;
+	while(kill_switch > 0 && (i = datos->actual->fetch_add(1)) < 26){
 		// Busco el elemento con más apariciones en la fila i
 		pair<string, unsigned int> elem;
-		Lista<pair<string, unsigned int>>::Iterador it = ((asd->hash_map)->tabla[i]).CrearIt();
+		Lista<pair<string, unsigned int>>::Iterador it = ((datos->hash_map)->tabla[i]).CrearIt();
 
 		// Quiero hacer esto solamente si la lista tiene elementos
 		if (it.HaySiguiente()){
@@ -117,13 +114,13 @@ void *masAparicionesPorFila(void *info){
 			/* Bloqueo la ejecución del resto de los threads que
 			   quieran modificar resultados al mismo tiempo que yo.
 			   Evito que se produzca una condición de carrera. */
-			asd->str_mtx->lock();
+			datos->mtx.lock();
 
 			/* Actualizo la lista global de resultados con el de la fila
 			   que revisé */
 			pair<string, unsigned int> el_que_mas_aparece(elem.first, elem.second);
-			(asd->resultados)->push_back(el_que_mas_aparece);
-			asd->str_mtx->unlock();
+			(datos->resultados)->push_back(el_que_mas_aparece);
+			datos->mtx.unlock();
 		}
 		--kill_switch;
 	}
@@ -135,16 +132,16 @@ pair<string, unsigned int> ConcurrentHashMap::maximum(unsigned int nt){
 	vector<pthread_t> threads(nt);
 	unsigned int tid;
 	atomic<int> fila_actual(0);
-	mutex mtx;
-	vector<pair<string, unsigned int>> results;
-	info_aux_nico aux;
-	aux.resultados = &results;
-	aux.hash_map = this;
-	aux.actual = &fila_actual;
-	aux.str_mtx = &mtx;
-	aux.cant_threads = nt;
+	vector<pair<string, unsigned int>> resultados_filas;
+
+	info_maximum_no_static datos_para_thread;
+	datos_para_thread.resultados = &resultados_filas;
+	datos_para_thread.hash_map = this;
+	datos_para_thread.actual = &fila_actual;
+	datos_para_thread.cant_threads = nt;
+
 	for (tid = 0; tid < nt; ++tid){
-		pthread_create(&threads[tid], NULL, masAparicionesPorFila, &aux);
+		pthread_create(&threads[tid], NULL, masAparicionesPorFila, &datos_para_thread);
 	}
 
 	/* Espero a que todos terminen antes de seguir */
@@ -155,13 +152,13 @@ pair<string, unsigned int> ConcurrentHashMap::maximum(unsigned int nt){
 	/* Busco el elemento que más aparece posta posta.
 	   Si estoy llamando a esta función, asumo que existe
 	   alguno. */
-	pair<string, unsigned int> res = results[0];
-	for (unsigned int k = 1; k < results.size(); ++k){
-		if ( results[k].second > res.second ){
-			res = results[k];
+	pair<string, unsigned int> solucion = resultados_filas[0];
+	for (unsigned int k = 1; k < resultados_filas.size(); ++k){
+		if ( resultados_filas[k].second > solucion.second ){
+			solucion = resultados_filas[k];
 		}
 	}
-	return res;
+	return solucion;
 }
 
 
@@ -262,9 +259,64 @@ ConcurrentHashMap ConcurrentHashMap::count_words(unsigned int n, list<string> ar
 }
 
 
+typedef struct info_maximum_static_read_str
+{
+	atomic<int> *actual;
+	mutex mtx;
+	vector<pair<string, unsigned int>> *resultados;
+	list<string> *archivos_a_leer;
+
+} info_maximum_static_read;
+
+
+void *leoArchivos(void *info)
+{
+	info_maximum_static *datos = (info_maximum_static *) info;
+
+	ConcurrentHashMap h;
+	h = count_words(datos->file);
+
+	/* Bloqueo la ejecución del resto de los threads que
+	   quieran modificar resultados al mismo tiempo que yo.
+	   Evito que se produzca una condición de carrera. */
+	datos->mtx.lock();
+
+	/* Actualizo la lista global de resultados con el del archivo
+	   que revisé */
+	(datos->resultados)->push_back(h);
+	datos->mtx.unlock();
+
+	return NULL;
+}
+
+
 pair<string, unsigned int> ConcurrentHashMap::maximum(unsigned int p_archivos, 
-	                               unsigned int p_maximos, 
-	                               list<string> archs){
-	pair<string, unsigned int> asd("tujavie", p_archivos);
+	                                                  unsigned int p_maximos, 
+	                                                  list<string> archs)
+{
+	list<string>::iterator it = archs.begin();
+	vector<pthread_t> threads_leyendo_archivos(p_archivos);
+	vector<ConcurrentHashMap> archivos_leidos;
+
+	info_maximum_static_read thread_data_read;
+	thread_data_read.resultados = &archivos_leidos;
+
+	atomic<int> siguiente_archivo;
+	unsigned int tid;
+
+	for (tid = 0; tid < p_archivos; ++tid)
+	{
+		pthread_create(&threads[tid], NULL, leoArchivos, &thread_data_read);
+		++i;
+	}
+
+	/* Espero a que todos terminen antes de seguir */
+	for (tid = 0; tid < p_archivos; ++tid)
+	{
+		pthread_join(threads[tid], NULL);
+	}
+
+
+	pair<string, unsigned int> asd("a",20);
 	return asd;
 }

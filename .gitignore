@@ -8,4 +8,6 @@ entregable/test-chm
 entregable/test-2
 entregable/test-3
 entregable/test-5
+entregable/corpus-*
+entregable/output
 tests-nico/tests-chm-no-concurrentes
