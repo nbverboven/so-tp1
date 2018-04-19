@@ -48,6 +48,7 @@ void ConcurrentHashMap::addAndInc(string key){
 	int _hash = Hash(key);
 	Lista<pair<string, unsigned int>>::Iterador it = tabla[_hash].CrearIt();
 	bool encontrado = false;
+
 	while(it.HaySiguiente() && !encontrado){
 		if(it.Siguiente().first == key){
 			addAndInc_mtx.lock();
@@ -57,6 +58,7 @@ void ConcurrentHashMap::addAndInc(string key){
 		}
 		it.Avanzar();
 	}
+
 	if(!encontrado){
 		tabla[_hash].push_front(make_pair(key,1));
 	}
@@ -192,8 +194,7 @@ ConcurrentHashMap ConcurrentHashMap::count_words(string arch){
 	return dicc;
 }
 
-
-void* CountWordsByFile(void *arguments){
+void* ConcurrentHashMap::CountWordsByFile(void *arguments){
 	struct ConcurrentHashMap::thread_data_countWords *thread_data;
    	thread_data = (struct ConcurrentHashMap::thread_data_countWords *) arguments;
 
@@ -235,7 +236,7 @@ ConcurrentHashMap ConcurrentHashMap::count_words(list<string> archs){
 		archs.pop_front();
 		therads_data[tid].hash_map = &dicc;
 
-		tresp = pthread_create(&threads[tid], NULL, CountWordsByFile, (void *)&therads_data[tid]);
+		tresp = pthread_create(&threads[tid], NULL, ConcurrentHashMap::CountWordsByFile, (void *)&therads_data[tid]);
 
       if (tresp) {
          //cout << "Error:unable to create thread, " << tresp << endl;
@@ -255,7 +256,7 @@ ConcurrentHashMap ConcurrentHashMap::count_words(list<string> archs){
 	return dicc;
 }
 
-void* CountWordsByFileList(void *arguments){
+void* ConcurrentHashMap::CountWordsByFileList(void *arguments){
 	struct ConcurrentHashMap::thread_data_countWords_mutex *thread_data;
    	thread_data = (struct ConcurrentHashMap::thread_data_countWords_mutex *) arguments;
 	string filename;
@@ -321,7 +322,7 @@ ConcurrentHashMap ConcurrentHashMap::count_words(unsigned int n, list<string> ar
 
 	for (int tid = 0; tid < cantThreads; ++tid){
 		//cout << "main() : creating thread, " << tid << endl;
-		tresp = pthread_create(&threads[tid], NULL, CountWordsByFileList, (void *)&therads_data);
+		tresp = pthread_create(&threads[tid], NULL, ConcurrentHashMap::CountWordsByFileList, (void *)&therads_data);
 		if (tresp) {
 			//cout << "Error:unable to create thread, " << tresp << endl;
 			exit(-1);
