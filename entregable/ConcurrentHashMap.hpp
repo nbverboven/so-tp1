@@ -22,7 +22,7 @@ public:
 	Lista<pair<string, unsigned int>> *tabla;
 
 	ConcurrentHashMap();
-	ConcurrentHashMap(ConcurrentHashMap &chm);
+	ConcurrentHashMap(const ConcurrentHashMap &chm);
 	~ConcurrentHashMap();
 
 	/*
@@ -84,6 +84,9 @@ protected:
 
 	static void* CountWordsByFile(void *arguments);
 	static void* CountWordsByFileList(void *arguments);
+
+private:
+	void agregarTodosLosElem(const ConcurrentHashMap &otro);
 
 };
 
