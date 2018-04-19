@@ -381,7 +381,8 @@ void *leoArchivos(void *info){
 
 pair<string, unsigned int> ConcurrentHashMap::maximum(unsigned int p_archivos, 
 	                                                  unsigned int p_maximos, 
-	                                                  list<string> archs){
+	                                                  list<string> archs)
+{
 	vector<pthread_t> threads_leyendo_archivos(p_archivos);
 	vector<ConcurrentHashMap> archivos_leidos;
 	atomic<int> siguiente_archivo(0);
@@ -436,4 +437,26 @@ void ConcurrentHashMap::agregarTodosLosElem(const ConcurrentHashMap &otro)
 			it.Avanzar();
 		}
 	}
+}
+
+
+/* Usa count_words(list<string> archs) */
+pair<string, unsigned int> ConcurrentHashMap::maximum2(unsigned int p_archivos, 
+	                                                   unsigned int p_maximos, 
+	                                                   list<string> archs)
+{
+	ConcurrentHashMap h = ConcurrentHashMap::count_words(archs); 
+	pair<string, unsigned int> res = h.maximum(p_maximos);
+	return res;
+}
+
+
+/* Usa count_words(unsigned int n, list<string> archs) */
+pair<string, unsigned int> ConcurrentHashMap::maximum3(unsigned int p_archivos, 
+	                                                   unsigned int p_maximos, 
+	                                                   list<string> archs)
+{
+	ConcurrentHashMap h = ConcurrentHashMap::count_words(p_archivos, archs); 
+	pair<string, unsigned int> res = h.maximum(p_maximos);
+	return res;
 }

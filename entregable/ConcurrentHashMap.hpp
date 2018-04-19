@@ -58,6 +58,8 @@ public:
 	static ConcurrentHashMap count_words(list<string> archs);
 	static ConcurrentHashMap count_words(unsigned int n, list<string> archs);
 	static pair<string, unsigned int> maximum(unsigned int p_archivos, unsigned int p_maximos, list<string>archs);
+	static pair<string, unsigned int> maximum2(unsigned int p_archivos, unsigned int p_maximos, list<string>archs);
+	static pair<string, unsigned int> maximum3(unsigned int p_archivos, unsigned int p_maximos, list<string>archs);
 
 	ConcurrentHashMap& operator=(const ConcurrentHashMap &otro);
 
