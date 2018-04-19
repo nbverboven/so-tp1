@@ -8,12 +8,15 @@ LDLIBS = -lpthread
 .cpp.o:
 	$(CXX) $(CXXFLAGS) -c $<
 
-BIN = test-2 test-3 test-5
+BIN = test-2 test-3 test-5 tiempos
 OBJ = ConcurrentHashMap.o
 
 all: $(BIN)
 
 $(BIN): ListaAtomica.hpp
+
+tiempos: $(OBJ) tiempos.cpp
+	$(CXX) $(CXXFLAGS) $(LDFLAGS) -o $@ tiempos.cpp $(OBJ) -lrt $(LDLIBS)
 
 test-2: $(OBJ) test-2.cpp
 	$(CXX) $(CXXFLAGS) $(LDFLAGS) -o $@ test-2.cpp $(OBJ) $(LDLIBS)

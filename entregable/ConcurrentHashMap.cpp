@@ -346,44 +346,55 @@ typedef struct info_maximum_static_read_str
 } info_maximum_static_read;
 
 
-void *leoArchivos(void *info)
-{
+void *leoArchivos(void *info){
 	info_maximum_static_read *datos = (info_maximum_static_read *) info;
 	int i;
 	int cant_archivos = datos->archivos_a_leer.size();
 	unsigned int kill_switch = cant_archivos/(datos->cant_threads) + 1;
+	ConcurrentHashMap h;
 
-	while (kill_switch > 0 && (i = datos->actual->fetch_add(1)) < cant_archivos)
-	{
-		ConcurrentHashMap h;
+	while (kill_switch > 0 && (i = datos->actual->fetch_add(1)) < cant_archivos){
 		string str = datos->archivos_a_leer[i];
 
-		h = ConcurrentHashMap::count_words(str);
+		/* Creo un HashMap temporal para guardar la información del
+		   archivo que procesé */
+		ConcurrentHashMap g = ConcurrentHashMap::count_words(str);
 
-		datos->mtx.lock();
-		/* Actualizo la lista global de resultados con el del archivo
-		   que revisé */
-		(datos->resultados)->push_back(h);
-		datos->mtx.unlock();
+		// Copio los elementos de g en h
+		for (int i = 0; i < 26; ++i){
+			Lista< pair<string, unsigned int> >::Iterador it = g.tabla[i].CrearIt();
+			while(it.HaySiguiente()){
+				for(unsigned int l=0; l<it.Siguiente().second; ++l)
+					h.addAndInc(it.Siguiente().first);
+				it.Avanzar();
+			}
+		}
+
 		--kill_switch;
 	}
 
+	datos->mtx.lock();
+	/* Actualizo la lista global de resultados con el del archivo
+	   que revisé */
+	(datos->resultados)->push_back(h);
+	datos->mtx.unlock();
 	return NULL;
 }
 
 
 pair<string, unsigned int> ConcurrentHashMap::maximum(unsigned int p_archivos, 
 	                                                  unsigned int p_maximos, 
-	                                                  list<string> archs)
-{
+	                                                  list<string> archs){
 	vector<pthread_t> threads_leyendo_archivos(p_archivos);
 	vector<ConcurrentHashMap> archivos_leidos;
 	atomic<int> siguiente_archivo(0);
-	vector<string> archivos_fuente;
 
+	/* Copio los elementos de archs en un vector para reducir
+	   el costo de acceder a cada posición cuando los threads
+	   los procesen */
+	vector<string> archivos_fuente;
 	list<string>::iterator it;
-	for (it = archs.begin(); it != archs.end(); ++it)
-	{
+	for (it = archs.begin(); it != archs.end(); ++it){
 		archivos_fuente.push_back(*it);
 	}
 
@@ -395,30 +406,26 @@ pair<string, unsigned int> ConcurrentHashMap::maximum(unsigned int p_archivos,
 	thread_data_read.archivos_a_leer = archivos_fuente;
 	thread_data_read.cant_threads = p_archivos;
 
-	for (tid = 0; tid < p_archivos; ++tid)
-	{
+	// Primero proceso todos los archivos
+	for (tid = 0; tid < p_archivos; ++tid){
 		pthread_create(&threads_leyendo_archivos[tid], NULL, leoArchivos, &thread_data_read);
 	}
 
 	// Espero a que todos terminen antes de seguir 
-	for (tid = 0; tid < p_archivos; ++tid)
-	{
+	for (tid = 0; tid < p_archivos; ++tid){
 		pthread_join(threads_leyendo_archivos[tid], NULL);
 	}
 
 	// h va a contener toda la información de archivos_leidos
 	ConcurrentHashMap h;
-	for (uint k = 0; k < archivos_leidos.size(); ++k)
-	{
+	for (uint k = 0; k < archivos_leidos.size(); ++k){
 		h.agregarTodosLosElem(archivos_leidos[k]);
 	}
 
+	// Calculo el máximo de la combinación de HashMaps
 	pair<string, unsigned int> solucion = h.maximum(p_maximos);
-
 	return solucion;
 }
-
-
 
 
 void ConcurrentHashMap::agregarTodosLosElem(const ConcurrentHashMap &otro)
