@@ -374,13 +374,13 @@ TEST(ConcurrentHashMapMaximum, TestMasThreadsQueFilas)
 	}
 }
 
-TEST(ConcurrentHashMapMaximumPostaPosta, Test1ThreadParaLeerY1ThreadParaCalcular)
-{
-	ConcurrentHashMap h;
+// TEST(ConcurrentHashMapMaximumPostaPosta, Test1ThreadParaLeerY1ThreadParaCalcular)
+// {
+// 	ConcurrentHashMap h;
 
-	list<string> archs = {"input_text", "input_text2", "input_text3", "input_text4"};
+// 	list<string> archs = {"input_text", "input_text2", "input_text3", "input_text4"};
 
-	ConcurrentHashMap::maximum(1, 1, archs);
-}
+// 	ConcurrentHashMap::maximum(1, 1, archs);
+// }
 
 
