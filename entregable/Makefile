@@ -47,7 +47,7 @@ test-5-run: test-5
 	for i in 0 1 2 3 4; do for j in 0 1 2 3 4; do \
 		./test-5 $$((i + 1)) $$((j + 1)) | diff -u - corpus-max; \
 	done; done
-	rm -f corpus-max corpus-[0-4]
+	#rm -f corpus-max corpus-[0-4]
 
 clean:
 	rm -f $(BIN) $(OBJ)

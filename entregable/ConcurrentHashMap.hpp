@@ -4,6 +4,7 @@
 #include <pthread.h>
 #include <atomic>
 #include <mutex>
+#include <condition_variable>
 #include <utility>
 #include <string>
 #include <list>
@@ -54,9 +55,36 @@ public:
 	*/
 	pair<string, unsigned int> maximum(unsigned int nt);
 
+	/*
+		Devuelve el ConcurrentHashMap cargado con las
+		palabras (entendiéndose como tales las separadas 
+		por espacios) del archivo arch.
+		
+		-- No concurrente --
+	*/
 	static ConcurrentHashMap count_words(string arch);
+
+	/*
+		Devuelve el ConcurrentHashMap cargado con las
+		palabras (entendiéndose como tales las separadas 
+		por espacios) de cada archivo de la lista que se 
+		pasa por parámetro.
+		
+		-- Un thread por archivo --
+	*/
 	static ConcurrentHashMap count_words(list<string> archs);
+
+	/* 
+		Devuelve el ConcurrentHashMap cargado con las
+		palabras (entendiéndose como tales las separadas 
+		por espacios) de cada archivo de la lista que se 
+		pasa por parámetro utilizando n threads.
+		n puede ser menor que la cantidad de archivos. 
+		No hay threads sin trabajo mientras queden archivos 
+		sin procesar.
+	*/
 	static ConcurrentHashMap count_words(unsigned int n, list<string> archs);
+
 	static pair<string, unsigned int> maximum(unsigned int p_archivos, unsigned int p_maximos, list<string>archs);
 	static pair<string, unsigned int> maximum2(unsigned int p_archivos, unsigned int p_maximos, list<string>archs);
 	static pair<string, unsigned int> maximum3(unsigned int p_archivos, unsigned int p_maximos, list<string>archs);
@@ -64,7 +92,6 @@ public:
 	ConcurrentHashMap& operator=(const ConcurrentHashMap &otro);
 
 protected:
-
 	mutex addAndInc_mtx;
 
 	int Hash (const string& str){
@@ -72,6 +99,7 @@ protected:
 		return hash;
 	}
 
+	/* Estructuras utilizadas por maximum y count_words */
 	typedef struct thread_data_countWords {
 		int thread_id;
 		string file;
@@ -84,12 +112,31 @@ protected:
 		ConcurrentHashMap* hash_map;
 	} thread_data_countWords_mutex;
 
-	static void* CountWordsByFile(void *arguments);
-	static void* CountWordsByFileList(void *arguments);
+	typedef struct info_maximum_no_static_str{
+		atomic<int> *actual;
+		mutex mtx;
+		unsigned int cant_threads;
+		vector<pair<string, unsigned int>> *resultados;
+		ConcurrentHashMap *hash_map;
+	} info_maximum_no_static;
+
+	typedef struct info_maximum_static_read_str
+	{
+		atomic<int> *actual;
+		mutex mtx;
+		vector<ConcurrentHashMap> *resultados;
+		vector<string> archivos_a_leer;
+		unsigned int cant_threads;
+	} info_maximum_static_read;
+
+	static void *CountWordsByFile(void *arguments);
+	static void *CountWordsByFileList(void *arguments);
+	static void *leoArchivos(void *info);
+	static void *masAparicionesPorFila(void *info);
 
 private:
+	/* Agrega todos los elementos de otro por copia */
 	void agregarTodosLosElem(const ConcurrentHashMap &otro);
-
 };
 
 #endif // CONCURRENT_HASH_MAP_HPP

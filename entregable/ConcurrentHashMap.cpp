@@ -43,9 +43,25 @@ ConcurrentHashMap& ConcurrentHashMap::operator=(const ConcurrentHashMap &chm){
 }
 
 
+/* Semáforo para evitar que addAndInc y 
+   count_words se ejecuten concurrentemente */
+mutex countWords_addAndInc_mtx;
+condition_variable countWords_addAndInc_cond;
+int semaforo_countWords_addAndInc_habilitado = 1; // Nombre nada ambiguo
+bool estaHabilitado(){return semaforo_countWords_addAndInc_habilitado != 0;}
+
+
 /************ Metodos *************/
 
 void ConcurrentHashMap::addAndInc(string key){
+
+	/* Me fijo si el semáforo me indica que no hay otro
+	   thread ejecutando count_words. Si es así, espero
+	   a que se libere. */
+	unique_lock<mutex> lck(countWords_addAndInc_mtx);
+	countWords_addAndInc_cond.wait(lck, estaHabilitado);
+	--semaforo_countWords_addAndInc_habilitado;
+
 	int _hash = Hash(key);
 	Lista<pair<string, unsigned int>>::Iterador it = tabla[_hash].CrearIt();
 	bool encontrado = false;
@@ -63,6 +79,11 @@ void ConcurrentHashMap::addAndInc(string key){
 	if(!encontrado){
 		tabla[_hash].push_front(make_pair(key,1));
 	}
+
+	/* Despierto a alguien que pudiera querer
+	   ejecutar count_words */
+	++semaforo_countWords_addAndInc_habilitado;
+	countWords_addAndInc_cond.notify_one();
 }
 
 
@@ -80,17 +101,8 @@ bool ConcurrentHashMap::member(string key){
 }
 
 
-typedef struct info_maximum_no_static_str{
-	atomic<int> *actual;
-	mutex mtx;
-	unsigned int cant_threads;
-	vector<pair<string, unsigned int>> *resultados;
-	ConcurrentHashMap *hash_map;
-} info_maximum_no_static;
-
-
-void *masAparicionesPorFila(void *info){
-	info_maximum_no_static *datos = (info_maximum_no_static *) info;
+void *ConcurrentHashMap::masAparicionesPorFila(void *info){
+	ConcurrentHashMap::info_maximum_no_static *datos = (ConcurrentHashMap::info_maximum_no_static *) info;
 	int i;
 
 	/* Uso esta variable para evitar el caso de que un thread 
@@ -109,8 +121,8 @@ void *masAparicionesPorFila(void *info){
 			while (it.HaySiguiente()){
 				if (it.Siguiente().second > elem.second){
 
-					// Si encuentro una clave en la fila que se repite más,
-					// actualizo la solución
+					/* Si encuentro una clave en la fila que se repite más,
+					   actualizo la solución */
 					elem = it.Siguiente();
 				}
 				it.Avanzar();
@@ -134,6 +146,14 @@ void *masAparicionesPorFila(void *info){
 
 
 pair<string, unsigned int> ConcurrentHashMap::maximum(unsigned int nt){
+
+	/* Me fijo si el semáforo me indica que no hay otro
+	   thread ejecutando addAndInc. Si es así, espero
+	   a que se libere. */
+	unique_lock<mutex> lck(countWords_addAndInc_mtx);
+	countWords_addAndInc_cond.wait(lck, estaHabilitado);
+	--semaforo_countWords_addAndInc_habilitado;
+
 	vector<pthread_t> threads(nt);
 	unsigned int tid;
 	atomic<int> fila_actual(0);
@@ -146,12 +166,20 @@ pair<string, unsigned int> ConcurrentHashMap::maximum(unsigned int nt){
 	datos_para_thread.cant_threads = nt;
 
 	for (tid = 0; tid < nt; ++tid){
-		pthread_create(&threads[tid], NULL, masAparicionesPorFila, &datos_para_thread);
+		int status_create = pthread_create(&threads[tid], NULL, masAparicionesPorFila, &datos_para_thread);
+		if (status_create) {
+			printf("Error: unable to create thread\n");
+			exit(-1);
+		}
 	}
 
 	/* Espero a que todos terminen antes de seguir */
 	for (tid = 0; tid < nt; ++tid){
-		pthread_join(threads[tid], NULL);
+		int status_join = pthread_join(threads[tid], NULL);
+		if (status_join) {
+			printf("Error: unable to join thread\n");
+			exit(-1);
+		}
 	}
 
 	/* Busco el elemento que más aparece posta posta.
@@ -163,18 +191,18 @@ pair<string, unsigned int> ConcurrentHashMap::maximum(unsigned int nt){
 			solucion = resultados_filas[k];
 		}
 	}
+
+	/* Despierto a alguien que pudiera querer
+	   ejecutar addAndInc. */
+	++semaforo_countWords_addAndInc_habilitado;
+	countWords_addAndInc_cond.notify_one();
+
 	return solucion;
 }
 
 
 /************ Metodos estaticos *************/
 
-/*
-	Devuelve el ConcurrentHashMap cargado con las
-	palabras (entendiéndose como tales las separadas 
-	por espacios) del archivo arch.
-	No concurrente.
-*/
 ConcurrentHashMap ConcurrentHashMap::count_words(string arch){
 	ConcurrentHashMap dicc;
 	string line;
@@ -192,9 +220,10 @@ ConcurrentHashMap ConcurrentHashMap::count_words(string arch){
 	return dicc;
 }
 
+
 void* ConcurrentHashMap::CountWordsByFile(void *arguments){
-	struct ConcurrentHashMap::thread_data_countWords *thread_data;
-   	thread_data = (struct ConcurrentHashMap::thread_data_countWords *) arguments;
+	ConcurrentHashMap::thread_data_countWords *thread_data;
+   	thread_data = (ConcurrentHashMap::thread_data_countWords *) arguments;
 
 	//cout << "Thread with id : " << thread_data->thread_id << endl;
 
@@ -213,13 +242,7 @@ void* ConcurrentHashMap::CountWordsByFile(void *arguments){
 	pthread_exit(NULL);
 }
 
-/*
-	Devuelve el ConcurrentHashMap cargado con las
-	palabras (entendiéndose como tales las separadas 
-	por espacios) de cada archivo de la lista que se 
-	pasa por parámetro.
-	Un thread por archivo.
-*/
+
 ConcurrentHashMap ConcurrentHashMap::count_words(list<string> archs){
 	ConcurrentHashMap dicc;
 	int cantThreads = archs.size();
@@ -246,13 +269,13 @@ ConcurrentHashMap ConcurrentHashMap::count_words(list<string> archs){
          	exit(-1);
       }
 	}
-
 	return dicc;
 }
 
+
 void* ConcurrentHashMap::CountWordsByFileList(void *arguments){
-	struct ConcurrentHashMap::thread_data_countWords_mutex *thread_data;
-   	thread_data = (struct ConcurrentHashMap::thread_data_countWords_mutex *) arguments;
+	ConcurrentHashMap::thread_data_countWords_mutex *thread_data;
+   	thread_data = (ConcurrentHashMap::thread_data_countWords_mutex *) arguments;
 	string filename;
 	bool hasFile = true;
 
@@ -285,15 +308,6 @@ void* ConcurrentHashMap::CountWordsByFileList(void *arguments){
 }
 
 
-/* 
-	Devuelve el ConcurrentHashMap cargado con las
-	palabras (entendiéndose como tales las separadas 
-	por espacios) de cada archivo de la lista que se 
-	pasa por parámetro utilizando n threads.
-	n puede ser menor que la cantidad de archivos. 
-	No hay threads sin trabajo mientras queden archivos 
-	sin procesar.
-*/
 ConcurrentHashMap ConcurrentHashMap::count_words(unsigned int n, list<string> archs){
 	ConcurrentHashMap dicc;
 	int cantThreads = n;
@@ -315,6 +329,7 @@ ConcurrentHashMap ConcurrentHashMap::count_words(unsigned int n, list<string> ar
 	for (int tid = 0; tid < cantThreads; ++tid){
 		tresp = pthread_create(&threads[tid], NULL, ConcurrentHashMap::CountWordsByFileList, (void *)&therads_data);
 		if (tresp) {
+			printf("Error: unable to create thread \n");
 			exit(-1);
 		}
 	}
@@ -324,6 +339,7 @@ ConcurrentHashMap ConcurrentHashMap::count_words(unsigned int n, list<string> ar
 	for (int tid = 0; tid < cantThreads; ++tid){
 		tresp = pthread_join(threads[tid], &status);
 		if (tresp) {
+			printf("Error: unable to join thread \n");
 			exit(-1);
 		}
 
@@ -333,18 +349,8 @@ ConcurrentHashMap ConcurrentHashMap::count_words(unsigned int n, list<string> ar
 }
 
 
-typedef struct info_maximum_static_read_str
-{
-	atomic<int> *actual;
-	mutex mtx;
-	vector<ConcurrentHashMap> *resultados;
-	vector<string> archivos_a_leer;
-	unsigned int cant_threads;
-} info_maximum_static_read;
-
-
-void *leoArchivos(void *info){
-	info_maximum_static_read *datos = (info_maximum_static_read *) info;
+void *ConcurrentHashMap::leoArchivos(void *info){
+	ConcurrentHashMap::info_maximum_static_read *datos = (ConcurrentHashMap::info_maximum_static_read *) info;
 	int i;
 	int cant_archivos = datos->archivos_a_leer.size();
 	unsigned int kill_switch = cant_archivos/(datos->cant_threads) + 1;
@@ -406,12 +412,20 @@ pair<string, unsigned int> ConcurrentHashMap::maximum(unsigned int p_archivos,
 
 	// Primero proceso todos los archivos
 	for (tid = 0; tid < p_archivos; ++tid){
-		pthread_create(&threads_leyendo_archivos[tid], NULL, leoArchivos, &thread_data_read);
+		int status_create = pthread_create(&threads_leyendo_archivos[tid], NULL, leoArchivos, &thread_data_read);
+		if (status_create) {
+			printf("Error: unable to create thread\n");
+			exit(-1);
+		}
 	}
 
 	// Espero a que todos terminen antes de seguir 
 	for (tid = 0; tid < p_archivos; ++tid){
-		pthread_join(threads_leyendo_archivos[tid], NULL);
+		int status_join = pthread_join(threads_leyendo_archivos[tid], NULL);
+		if (status_join) {
+			printf("Error: unable to join thread\n");
+			exit(-1);
+		}
 	}
 
 	// h va a contener toda la información de archivos_leidos
