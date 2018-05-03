@@ -14,8 +14,8 @@ int main(int argc, char **argv) {
 		return 1;
 	}
 	
-	//h = ConcurrentHashMap::count_words(atoi(argv[1]), l);
-	h = ConcurrentHashMap::count_words(2, l);
+	h = ConcurrentHashMap::count_words(atoi(argv[1]), l);
+	//h = ConcurrentHashMap::count_words(2, l);
 	//h = ConcurrentHashMap::count_words(l);
 	for (i = 0; i < 26; i++) {
 		for (auto it = h.tabla[i].CrearIt(); it.HaySiguiente(); it.Avanzar()) {

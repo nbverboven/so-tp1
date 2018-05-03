@@ -274,20 +274,20 @@ ConcurrentHashMap ConcurrentHashMap::count_words(list<string> archs){
 
 
 void* ConcurrentHashMap::CountWordsByFileList(void *arguments){
-	ConcurrentHashMap::thread_data_countWords_mutex *thread_data;
-   	thread_data = (ConcurrentHashMap::thread_data_countWords_mutex *) arguments;
+	ConcurrentHashMap::thread_data_countWords_list *thread_data;
+   	thread_data = (ConcurrentHashMap::thread_data_countWords_list *) arguments;
 	string filename;
 	bool hasFile = true;
 
 	while(hasFile){
-		thread_data->getNextFile.lock(); //Mutex, entro zona critica
-		if(thread_data->files.empty()){
-			hasFile = false;
+		int localActual = thread_data->actual.fetch_add(1);
+		if(localActual < thread_data->files.size()){
+			list<string>::iterator itFiles = thread_data->files.begin();
+			advance(itFiles, localActual); //Avanzo hasta el archivo localActual-esimo
+			filename = (*itFiles);
 		}else {
-			filename = thread_data->files.front();
-			thread_data->files.pop_front();
+			hasFile = false;
 		}
-		thread_data->getNextFile.unlock(); //Mutex, salgo zona critica
 
 		if(hasFile){
 			string line;
@@ -303,7 +303,7 @@ void* ConcurrentHashMap::CountWordsByFileList(void *arguments){
 			}
 		}
 	}
-
+	
 	pthread_exit(NULL);
 }
 
@@ -318,9 +318,10 @@ ConcurrentHashMap ConcurrentHashMap::count_words(unsigned int n, list<string> ar
 	pthread_attr_t attr;
    	void *status;
 
-	thread_data_countWords_mutex therads_data;
+	thread_data_countWords_list therads_data;
 	therads_data.files = archs;
 	therads_data.hash_map = &dicc;
+	therads_data.actual = 0;
 
 	// Initialize and set thread joinable
    	pthread_attr_init(&attr);

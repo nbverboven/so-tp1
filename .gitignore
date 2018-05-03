@@ -15,3 +15,4 @@ entregable/output
 entregable/output.*
 tests-nico/input_text*
 tests-nico/tests-chm-no-concurrentes
+*.tar.gz

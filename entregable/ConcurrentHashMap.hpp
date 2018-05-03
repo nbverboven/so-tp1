@@ -106,11 +106,11 @@ protected:
 		ConcurrentHashMap* hash_map;
 	} thread_data_countWords;
 
-	typedef struct thread_data_countWords_mutex {
+	typedef struct thread_data_countWords_list {
 		list<string> files;
-		mutex getNextFile;
+		atomic<int> actual;
 		ConcurrentHashMap* hash_map;
-	} thread_data_countWords_mutex;
+	} thread_data_countWords_list;
 
 	typedef struct info_maximum_no_static_str{
 		atomic<int> *actual;
