@@ -378,9 +378,9 @@ void *ConcurrentHashMap::leoArchivos(void *info){
 	}
 
 	datos->mtx.lock();
-	/* Actualizo la lista global de resultados con el del archivo
+	/* Actualizo el HashMap global de resultados con la información de los archivos
 	   que revisé */
-	(datos->resultados)->push_back(h);
+	(datos->resultados)->agregarTodosLosElem(h);
 	datos->mtx.unlock();
 	return NULL;
 }
@@ -391,7 +391,7 @@ pair<string, unsigned int> ConcurrentHashMap::maximum(unsigned int p_archivos,
 	                                                  list<string> archs)
 {
 	vector<pthread_t> threads_leyendo_archivos(p_archivos);
-	vector<ConcurrentHashMap> archivos_leidos;
+	ConcurrentHashMap archivos_leidos;
 	atomic<int> siguiente_archivo(0);
 
 	/* Copio los elementos de archs en un vector para reducir
@@ -429,14 +429,7 @@ pair<string, unsigned int> ConcurrentHashMap::maximum(unsigned int p_archivos,
 		}
 	}
 
-	// h va a contener toda la información de archivos_leidos
-	ConcurrentHashMap h;
-	for (uint k = 0; k < archivos_leidos.size(); ++k){
-		h.agregarTodosLosElem(archivos_leidos[k]);
-	}
-
-	// Calculo el máximo de la combinación de HashMaps
-	pair<string, unsigned int> solucion = h.maximum(p_maximos);
+	pair<string, unsigned int> solucion = archivos_leidos.maximum(p_maximos);
 	
 	return solucion;
 }

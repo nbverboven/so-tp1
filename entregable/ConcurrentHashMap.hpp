@@ -124,7 +124,7 @@ protected:
 	{
 		atomic<int> *actual;
 		mutex mtx;
-		vector<ConcurrentHashMap> *resultados;
+		ConcurrentHashMap *resultados;
 		vector<string> archivos_a_leer;
 		unsigned int cant_threads;
 	} info_maximum_static_read;
