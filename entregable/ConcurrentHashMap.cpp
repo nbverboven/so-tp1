@@ -358,20 +358,20 @@ void *ConcurrentHashMap::leoArchivos(void *info){
 	ConcurrentHashMap h;
 
 	while (kill_switch > 0 && (i = datos->actual->fetch_add(1)) < cant_archivos){
-		string str = datos->archivos_a_leer[i];
+		string arch = datos->archivos_a_leer[i];
 
-		/* Creo un HashMap temporal para guardar la información del
-		   archivo que procesé */
-		ConcurrentHashMap g = ConcurrentHashMap::count_words(str);
-
-		// Copio los elementos de g en h
-		for (int i = 0; i < 26; ++i){
-			Lista< pair<string, unsigned int> >::Iterador it = g.tabla[i].CrearIt();
-			while(it.HaySiguiente()){
-				for(unsigned int l=0; l<it.Siguiente().second; ++l)
-					h.addAndInc(it.Siguiente().first);
-				it.Avanzar();
+		/* Guardo la información de arch en h */
+		string line;
+		ifstream file(arch);
+		if (file.is_open()){
+			while (getline (file,line)){
+				string word;
+				istringstream buf(line);
+				while(buf >> word){
+					h.addAndInc(word);
+				}
 			}
+			file.close();
 		}
 
 		--kill_switch;
