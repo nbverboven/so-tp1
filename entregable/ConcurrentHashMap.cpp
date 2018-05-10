@@ -43,12 +43,20 @@ ConcurrentHashMap& ConcurrentHashMap::operator=(const ConcurrentHashMap &chm){
 }
 
 
-/* Semáforo para evitar que addAndInc y 
+/* Semáforos para evitar que addAndInc y 
    count_words se ejecuten concurrentemente */
-mutex countWords_addAndInc_mtx;
-condition_variable countWords_addAndInc_cond;
-int semaforo_countWords_addAndInc_habilitado = 1; // Nombre nada ambiguo
-bool estaHabilitado(){return semaforo_countWords_addAndInc_habilitado != 0;}
+// mutex maximum_mtx;
+// condition_variable maximum_cond;
+// atomic<int> semaforo(1);
+
+
+// int cant_threads_addAndInc = 0;
+// bool estaHabilitadoMaximum(){return cant_threads_addAndInc == 0;}
+
+// mutex addAndInc_mtx;
+// condition_variable addAndInc_cond;
+// int cant_threads_maximum = 0;
+// bool estaHabilitadoAddAndInc(){return cant_threads_maximum == 0;}
 
 
 /************ Metodos *************/
@@ -56,34 +64,41 @@ bool estaHabilitado(){return semaforo_countWords_addAndInc_habilitado != 0;}
 void ConcurrentHashMap::addAndInc(string key){
 
 	/* Me fijo si el semáforo me indica que no hay otro
-	   thread ejecutando count_words. Si es así, espero
+	   thread ejecutando maximum. Si es así, espero
 	   a que se libere. */
-	unique_lock<mutex> lck(countWords_addAndInc_mtx);
-	countWords_addAndInc_cond.wait(lck, estaHabilitado);
-	--semaforo_countWords_addAndInc_habilitado;
+	// unique_lock<mutex> lck(maximum_mtx);
+	// addAndInc_cond.wait(lck, estaHabilitadoAddAndInc);
+	// ++cant_threads_addAndInc;
 
-	int _hash = Hash(key);
-	Lista<pair<string, unsigned int>>::Iterador it = tabla[_hash].CrearIt();
+	int hash = Hash(key);
+
+	/* Bloqueo la fila en la que está el elemento que
+	   quiero agregar */
+	addAndInc_filas_mtx[hash].lock();
+
+	Lista<pair<string, unsigned int>>::Iterador it = tabla[hash].CrearIt();
 	bool encontrado = false;
 
 	while(it.HaySiguiente() && !encontrado){
 		if(it.Siguiente().first == key){
-			addAndInc_mtx.lock();
 			++it.Siguiente().second;
-			addAndInc_mtx.unlock();
 			encontrado = true;
 		}
 		it.Avanzar();
 	}
 
 	if(!encontrado){
-		tabla[_hash].push_front(make_pair(key,1));
+		tabla[hash].push_front(make_pair(key,1));
 	}
 
+	/* Libero el mutex de la fila dada por hash */
+	addAndInc_filas_mtx[hash].unlock();
+
 	/* Despierto a alguien que pudiera querer
-	   ejecutar count_words */
-	++semaforo_countWords_addAndInc_habilitado;
-	countWords_addAndInc_cond.notify_one();
+	   ejecutar maximum */
+	// --cant_threads_addAndInc;
+	// maximum_cond.notify_all();
+	// addAndInc_cond.notify_all();
 }
 
 
@@ -150,9 +165,9 @@ pair<string, unsigned int> ConcurrentHashMap::maximum(unsigned int nt){
 	/* Me fijo si el semáforo me indica que no hay otro
 	   thread ejecutando addAndInc. Si es así, espero
 	   a que se libere. */
-	unique_lock<mutex> lck(countWords_addAndInc_mtx);
-	countWords_addAndInc_cond.wait(lck, estaHabilitado);
-	--semaforo_countWords_addAndInc_habilitado;
+	// unique_lock<mutex> lck(addAndInc_mtx);
+	// maximum_cond.wait(lck, estaHabilitadoMaximum);
+	// ++cant_threads_maximum;
 
 	vector<pthread_t> threads(nt);
 	unsigned int tid;
@@ -194,8 +209,9 @@ pair<string, unsigned int> ConcurrentHashMap::maximum(unsigned int nt){
 
 	/* Despierto a alguien que pudiera querer
 	   ejecutar addAndInc. */
-	++semaforo_countWords_addAndInc_habilitado;
-	countWords_addAndInc_cond.notify_one();
+	// --cant_threads_maximum;
+	// addAndInc_cond.notify_all();
+	// maximum_cond.notify_all();
 
 	return solucion;
 }
@@ -280,7 +296,7 @@ void* ConcurrentHashMap::CountWordsByFileList(void *arguments){
 	bool hasFile = true;
 
 	while(hasFile){
-		int localActual = thread_data->actual.fetch_add(1);
+		uint localActual = thread_data->actual.fetch_add(1);
 		if(localActual < thread_data->files.size()){
 			list<string>::iterator itFiles = thread_data->files.begin();
 			advance(itFiles, localActual); //Avanzo hasta el archivo localActual-esimo
