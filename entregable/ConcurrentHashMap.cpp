@@ -2,12 +2,14 @@
 
 /****** Constructor y Destructor **********/
 
-ConcurrentHashMap::ConcurrentHashMap(){
+ConcurrentHashMap::ConcurrentHashMap()
+: cant_threads_addAndInc(0), cant_threads_maximum(0){
 	tabla = new Lista<pair<string, unsigned int>>[26];
 }
 
 
-ConcurrentHashMap::ConcurrentHashMap(const ConcurrentHashMap &chm){
+ConcurrentHashMap::ConcurrentHashMap(const ConcurrentHashMap &chm)
+: cant_threads_addAndInc(0), cant_threads_maximum(0){
 	tabla = new Lista<pair<string, unsigned int>>[26];
 	for (int i = 0; i < 26; ++i){
 		Lista< pair<string, unsigned int> >::Iterador it = chm.tabla[i].CrearIt();
@@ -43,32 +45,23 @@ ConcurrentHashMap& ConcurrentHashMap::operator=(const ConcurrentHashMap &chm){
 }
 
 
-/* Semáforos para evitar que addAndInc y 
-   count_words se ejecuten concurrentemente */
-// mutex maximum_mtx;
-// condition_variable maximum_cond;
-// atomic<int> semaforo(1);
-
-
-// int cant_threads_addAndInc = 0;
-// bool estaHabilitadoMaximum(){return cant_threads_addAndInc == 0;}
-
-// mutex addAndInc_mtx;
-// condition_variable addAndInc_cond;
-// int cant_threads_maximum = 0;
-// bool estaHabilitadoAddAndInc(){return cant_threads_maximum == 0;}
-
-
 /************ Metodos *************/
 
 void ConcurrentHashMap::addAndInc(string key){
 
-	/* Me fijo si el semáforo me indica que no hay otro
-	   thread ejecutando maximum. Si es así, espero
-	   a que se libere. */
-	// unique_lock<mutex> lck(maximum_mtx);
-	// addAndInc_cond.wait(lck, estaHabilitadoAddAndInc);
-	// ++cant_threads_addAndInc;
+	/* Me fijo si el semáforo me indica que hay al menos
+	   un thread ejecutando maximum. Si es así, espero
+	   a que se liberen todos. */
+	unique_lock<mutex> lck(maximum_mtx);
+	int cuantos_en_maximum = cant_threads_maximum.load();
+
+	while (cuantos_en_maximum != 0)
+	{
+		addAndInc_cond.wait(lck);
+		cuantos_en_maximum = cant_threads_maximum.load();
+	}
+
+	++cant_threads_addAndInc;
 
 	int hash = Hash(key);
 
@@ -94,11 +87,10 @@ void ConcurrentHashMap::addAndInc(string key){
 	/* Libero el mutex de la fila dada por hash */
 	addAndInc_filas_mtx[hash].unlock();
 
-	/* Despierto a alguien que pudiera querer
+	/* Despierto a todos los que pudieran querer
 	   ejecutar maximum */
-	// --cant_threads_addAndInc;
-	// maximum_cond.notify_all();
-	// addAndInc_cond.notify_all();
+	--cant_threads_addAndInc;
+	maximum_cond.notify_all();
 }
 
 
@@ -162,12 +154,19 @@ void *ConcurrentHashMap::masAparicionesPorFila(void *info){
 
 pair<string, unsigned int> ConcurrentHashMap::maximum(unsigned int nt){
 
-	/* Me fijo si el semáforo me indica que no hay otro
-	   thread ejecutando addAndInc. Si es así, espero
-	   a que se libere. */
-	// unique_lock<mutex> lck(addAndInc_mtx);
-	// maximum_cond.wait(lck, estaHabilitadoMaximum);
-	// ++cant_threads_maximum;
+	/* Me fijo si el semáforo me indica que hay al menos
+	   un thread ejecutando addAndInc. Si es así, espero
+	   a que se liberen todos. */
+	unique_lock<mutex> lck(addAndInc_mtx);
+	int cuantos_en_addAndInc = cant_threads_addAndInc.load();
+
+	while (cuantos_en_addAndInc != 0)
+	{
+		maximum_cond.wait(lck);
+		cuantos_en_addAndInc = cant_threads_addAndInc.load();
+	}
+
+	++cant_threads_maximum;
 
 	vector<pthread_t> threads(nt);
 	unsigned int tid;
@@ -207,11 +206,10 @@ pair<string, unsigned int> ConcurrentHashMap::maximum(unsigned int nt){
 		}
 	}
 
-	/* Despierto a alguien que pudiera querer
+	/* Despierto a todos los que pudieran querer
 	   ejecutar addAndInc. */
-	// --cant_threads_maximum;
-	// addAndInc_cond.notify_all();
-	// maximum_cond.notify_all();
+	--cant_threads_maximum;
+	addAndInc_cond.notify_all();
 
 	return solucion;
 }
