@@ -45,7 +45,7 @@ ConcurrentHashMap& ConcurrentHashMap::operator=(const ConcurrentHashMap &chm){
 
 /* Semáforo para evitar que addAndInc y 
    count_words se ejecuten concurrentemente */
-mutex countWords_addAndInc_mtx;
+mutex maximum_addAndInc_mtx;
 condition_variable countWords_addAndInc_cond;
 int semaforo_countWords_addAndInc_habilitado = 1; // Nombre nada ambiguo
 bool estaHabilitado(){return semaforo_countWords_addAndInc_habilitado != 0;}
@@ -58,19 +58,19 @@ void ConcurrentHashMap::addAndInc(string key){
 	/* Me fijo si el semáforo me indica que no hay otro
 	   thread ejecutando count_words. Si es así, espero
 	   a que se libere. */
-	unique_lock<mutex> lck(countWords_addAndInc_mtx);
+	unique_lock<mutex> lck(maximum_addAndInc_mtx);
 	countWords_addAndInc_cond.wait(lck, estaHabilitado);
 	--semaforo_countWords_addAndInc_habilitado;
 
 	int _hash = Hash(key);
 	Lista<pair<string, unsigned int>>::Iterador it = tabla[_hash].CrearIt();
-	bool encontrado = false;
 
+	addAndInc_mtx[_hash].lock();		//Entrando zona critica
+
+	bool encontrado = false;
 	while(it.HaySiguiente() && !encontrado){
 		if(it.Siguiente().first == key){
-			addAndInc_mtx.lock();
 			++it.Siguiente().second;
-			addAndInc_mtx.unlock();
 			encontrado = true;
 		}
 		it.Avanzar();
@@ -79,6 +79,8 @@ void ConcurrentHashMap::addAndInc(string key){
 	if(!encontrado){
 		tabla[_hash].push_front(make_pair(key,1));
 	}
+
+	addAndInc_mtx[_hash].unlock();		//Saliendo zona critica
 
 	/* Despierto a alguien que pudiera querer
 	   ejecutar count_words */
@@ -150,7 +152,7 @@ pair<string, unsigned int> ConcurrentHashMap::maximum(unsigned int nt){
 	/* Me fijo si el semáforo me indica que no hay otro
 	   thread ejecutando addAndInc. Si es así, espero
 	   a que se libere. */
-	unique_lock<mutex> lck(countWords_addAndInc_mtx);
+	unique_lock<mutex> lck(maximum_addAndInc_mtx);
 	countWords_addAndInc_cond.wait(lck, estaHabilitado);
 	--semaforo_countWords_addAndInc_habilitado;
 

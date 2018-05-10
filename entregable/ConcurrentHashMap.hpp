@@ -92,7 +92,7 @@ public:
 	ConcurrentHashMap& operator=(const ConcurrentHashMap &otro);
 
 protected:
-	mutex addAndInc_mtx;
+	mutex addAndInc_mtx[26];
 
 	int Hash (const string& str){
 		int hash = (int)(str[0]) % 26;
