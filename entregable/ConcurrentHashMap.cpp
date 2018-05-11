@@ -86,7 +86,7 @@ void ConcurrentHashMap::addAndInc(string key){
 	/* Libero el mutex de la fila dada por hash */
 	addAndInc_filas_mtx[hash].unlock();
 
-	/* Despierto a todos los que pudieran querer
+	/* Despierto a alguno que pudiera querer
 	   ejecutar maximum */
 	--cant_threads_addAndInc;
 	maximum_cond.notify_one();
