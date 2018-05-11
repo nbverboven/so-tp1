@@ -67,11 +67,9 @@ void ConcurrentHashMap::addAndInc(string key){
 	/* Bloqueo la fila en la que está el elemento que
 	   quiero agregar */
 	addAndInc_filas_mtx[hash].lock();
-
 	Lista<pair<string, unsigned int>>::Iterador it = tabla[hash].CrearIt();
-	bool encontrado = false;
 
-	addAndInc_mtx[_hash].lock();		//Entrando zona critica
+	addAndInc_filas_mtx[hash].lock();		//Entrando zona critica
 
 	bool encontrado = false;
 	while(it.HaySiguiente() && !encontrado){
