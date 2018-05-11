@@ -90,7 +90,8 @@ void ConcurrentHashMap::addAndInc(string key){
 	/* Despierto a alguno que pudiera querer
 	   ejecutar maximum */
 	--cant_threads_addAndInc;
-	maximum_cond.notify_one();
+	if(cant_threads_addAndInc == 0)
+		maximum_cond.notify_one();
 }
 
 
@@ -209,7 +210,8 @@ pair<string, unsigned int> ConcurrentHashMap::maximum(unsigned int nt){
 	/* Despierto a alguno que pudiera querer
 	   ejecutar addAndInc. */
 	--cant_threads_maximum;
-	addAndInc_cond.notify_one();
+	if(cant_threads_maximum == 0)
+		addAndInc_cond.notify_one();
 
 	return solucion;
 }
