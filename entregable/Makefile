@@ -8,7 +8,7 @@ LDLIBS = -lpthread
 .cpp.o:
 	$(CXX) $(CXXFLAGS) -c $<
 
-BIN = test-2 test-3 test-5 tiempos
+BIN = test-2 test-3 test-5 tiempos tiempos2 tiempos3
 OBJ = ConcurrentHashMap.o
 
 all: $(BIN)
@@ -17,6 +17,15 @@ $(BIN): ListaAtomica.hpp
 
 tiempos: $(OBJ) tiempos.cpp
 	$(CXX) $(CXXFLAGS) $(LDFLAGS) -o $@ tiempos.cpp $(OBJ) -lrt $(LDLIBS)
+
+tiempos2: $(OBJ) tiempos2.cpp
+	$(CXX) $(CXXFLAGS) $(LDFLAGS) -o $@ tiempos2.cpp $(OBJ) -lrt $(LDLIBS)
+
+tiempos3: $(OBJ) tiempos3.cpp
+	$(CXX) $(CXXFLAGS) $(LDFLAGS) -o $@ tiempos3.cpp $(OBJ) -lrt $(LDLIBS)
+
+tiempos-run: tiempos tiempos2 tiempos3
+	./tiempos && ./tiempos2 && ./tiempos3
 
 test-2: $(OBJ) test-2.cpp
 	$(CXX) $(CXXFLAGS) $(LDFLAGS) -o $@ test-2.cpp $(OBJ) $(LDLIBS)
@@ -50,3 +59,4 @@ test-5-run: test-5
 clean:
 	rm -f $(BIN) $(OBJ)
 	rm -f corpus-*
+	rm -f *.csv

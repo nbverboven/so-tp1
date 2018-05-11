@@ -2,12 +2,14 @@
 
 /****** Constructor y Destructor **********/
 
-ConcurrentHashMap::ConcurrentHashMap(){
+ConcurrentHashMap::ConcurrentHashMap()
+: cant_threads_addAndInc(0), cant_threads_maximum(0){
 	tabla = new Lista<pair<string, unsigned int>>[26];
 }
 
 
-ConcurrentHashMap::ConcurrentHashMap(const ConcurrentHashMap &chm){
+ConcurrentHashMap::ConcurrentHashMap(const ConcurrentHashMap &chm)
+: cant_threads_addAndInc(0), cant_threads_maximum(0){
 	tabla = new Lista<pair<string, unsigned int>>[26];
 	for (int i = 0; i < 26; ++i){
 		Lista< pair<string, unsigned int> >::Iterador it = chm.tabla[i].CrearIt();
@@ -43,27 +45,32 @@ ConcurrentHashMap& ConcurrentHashMap::operator=(const ConcurrentHashMap &chm){
 }
 
 
-/* Semáforo para evitar que addAndInc y 
-   count_words se ejecuten concurrentemente */
-mutex maximum_addAndInc_mtx;
-condition_variable countWords_addAndInc_cond;
-int semaforo_countWords_addAndInc_habilitado = 1; // Nombre nada ambiguo
-bool estaHabilitado(){return semaforo_countWords_addAndInc_habilitado != 0;}
-
-
 /************ Metodos *************/
 
 void ConcurrentHashMap::addAndInc(string key){
 
-	/* Me fijo si el semáforo me indica que no hay otro
-	   thread ejecutando count_words. Si es así, espero
-	   a que se libere. */
-	unique_lock<mutex> lck(maximum_addAndInc_mtx);
-	countWords_addAndInc_cond.wait(lck, estaHabilitado);
-	--semaforo_countWords_addAndInc_habilitado;
+	/* Me fijo si el semáforo me indica que hay al menos
+	   un thread ejecutando maximum. Si es así, espero
+	   a que se liberen todos. */
+	unique_lock<mutex> lck(maximum_mtx);
+	int cuantos_en_maximum = cant_threads_maximum.load();
 
-	int _hash = Hash(key);
-	Lista<pair<string, unsigned int>>::Iterador it = tabla[_hash].CrearIt();
+	while (cuantos_en_maximum != 0)
+	{
+		addAndInc_cond.wait(lck);
+		cuantos_en_maximum = cant_threads_maximum.load();
+	}
+
+	++cant_threads_addAndInc;
+
+	int hash = Hash(key);
+
+	/* Bloqueo la fila en la que está el elemento que
+	   quiero agregar */
+	addAndInc_filas_mtx[hash].lock();
+
+	Lista<pair<string, unsigned int>>::Iterador it = tabla[hash].CrearIt();
+	bool encontrado = false;
 
 	addAndInc_mtx[_hash].lock();		//Entrando zona critica
 
@@ -77,15 +84,16 @@ void ConcurrentHashMap::addAndInc(string key){
 	}
 
 	if(!encontrado){
-		tabla[_hash].push_front(make_pair(key,1));
+		tabla[hash].push_front(make_pair(key,1));
 	}
 
-	addAndInc_mtx[_hash].unlock();		//Saliendo zona critica
+	/* Libero el mutex de la fila dada por hash */
+	addAndInc_filas_mtx[hash].unlock();
 
-	/* Despierto a alguien que pudiera querer
-	   ejecutar count_words */
-	++semaforo_countWords_addAndInc_habilitado;
-	countWords_addAndInc_cond.notify_one();
+	/* Despierto a todos los que pudieran querer
+	   ejecutar maximum */
+	--cant_threads_addAndInc;
+	maximum_cond.notify_all();
 }
 
 
@@ -149,12 +157,19 @@ void *ConcurrentHashMap::masAparicionesPorFila(void *info){
 
 pair<string, unsigned int> ConcurrentHashMap::maximum(unsigned int nt){
 
-	/* Me fijo si el semáforo me indica que no hay otro
-	   thread ejecutando addAndInc. Si es así, espero
-	   a que se libere. */
-	unique_lock<mutex> lck(maximum_addAndInc_mtx);
-	countWords_addAndInc_cond.wait(lck, estaHabilitado);
-	--semaforo_countWords_addAndInc_habilitado;
+	/* Me fijo si el semáforo me indica que hay al menos
+	   un thread ejecutando addAndInc. Si es así, espero
+	   a que se liberen todos. */
+	unique_lock<mutex> lck(addAndInc_mtx);
+	int cuantos_en_addAndInc = cant_threads_addAndInc.load();
+
+	while (cuantos_en_addAndInc != 0)
+	{
+		maximum_cond.wait(lck);
+		cuantos_en_addAndInc = cant_threads_addAndInc.load();
+	}
+
+	++cant_threads_maximum;
 
 	vector<pthread_t> threads(nt);
 	unsigned int tid;
@@ -194,10 +209,10 @@ pair<string, unsigned int> ConcurrentHashMap::maximum(unsigned int nt){
 		}
 	}
 
-	/* Despierto a alguien que pudiera querer
+	/* Despierto a todos los que pudieran querer
 	   ejecutar addAndInc. */
-	++semaforo_countWords_addAndInc_habilitado;
-	countWords_addAndInc_cond.notify_one();
+	--cant_threads_maximum;
+	addAndInc_cond.notify_all();
 
 	return solucion;
 }
@@ -282,7 +297,7 @@ void* ConcurrentHashMap::CountWordsByFileList(void *arguments){
 	bool hasFile = true;
 
 	while(hasFile){
-		int localActual = thread_data->actual.fetch_add(1);
+		uint localActual = thread_data->actual.fetch_add(1);
 		if(localActual < thread_data->files.size()){
 			list<string>::iterator itFiles = thread_data->files.begin();
 			advance(itFiles, localActual); //Avanzo hasta el archivo localActual-esimo
@@ -360,29 +375,29 @@ void *ConcurrentHashMap::leoArchivos(void *info){
 	ConcurrentHashMap h;
 
 	while (kill_switch > 0 && (i = datos->actual->fetch_add(1)) < cant_archivos){
-		string str = datos->archivos_a_leer[i];
+		string arch = datos->archivos_a_leer[i];
 
-		/* Creo un HashMap temporal para guardar la información del
-		   archivo que procesé */
-		ConcurrentHashMap g = ConcurrentHashMap::count_words(str);
-
-		// Copio los elementos de g en h
-		for (int i = 0; i < 26; ++i){
-			Lista< pair<string, unsigned int> >::Iterador it = g.tabla[i].CrearIt();
-			while(it.HaySiguiente()){
-				for(unsigned int l=0; l<it.Siguiente().second; ++l)
-					h.addAndInc(it.Siguiente().first);
-				it.Avanzar();
+		/* Guardo la información de arch en h */
+		string line;
+		ifstream file(arch);
+		if (file.is_open()){
+			while (getline (file,line)){
+				string word;
+				istringstream buf(line);
+				while(buf >> word){
+					h.addAndInc(word);
+				}
 			}
+			file.close();
 		}
 
 		--kill_switch;
 	}
 
 	datos->mtx.lock();
-	/* Actualizo la lista global de resultados con el del archivo
+	/* Actualizo el HashMap global de resultados con la información de los archivos
 	   que revisé */
-	(datos->resultados)->push_back(h);
+	(datos->resultados)->agregarTodosLosElem(h);
 	datos->mtx.unlock();
 	return NULL;
 }
@@ -393,7 +408,7 @@ pair<string, unsigned int> ConcurrentHashMap::maximum(unsigned int p_archivos,
 	                                                  list<string> archs)
 {
 	vector<pthread_t> threads_leyendo_archivos(p_archivos);
-	vector<ConcurrentHashMap> archivos_leidos;
+	ConcurrentHashMap archivos_leidos;
 	atomic<int> siguiente_archivo(0);
 
 	/* Copio los elementos de archs en un vector para reducir
@@ -431,14 +446,7 @@ pair<string, unsigned int> ConcurrentHashMap::maximum(unsigned int p_archivos,
 		}
 	}
 
-	// h va a contener toda la información de archivos_leidos
-	ConcurrentHashMap h;
-	for (uint k = 0; k < archivos_leidos.size(); ++k){
-		h.agregarTodosLosElem(archivos_leidos[k]);
-	}
-
-	// Calculo el máximo de la combinación de HashMaps
-	pair<string, unsigned int> solucion = h.maximum(p_maximos);
+	pair<string, unsigned int> solucion = archivos_leidos.maximum(p_maximos);
 	
 	return solucion;
 }

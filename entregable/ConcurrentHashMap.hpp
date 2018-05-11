@@ -91,8 +91,9 @@ public:
 
 	ConcurrentHashMap& operator=(const ConcurrentHashMap &otro);
 
+
 protected:
-	mutex addAndInc_mtx[26];
+	array<mutex, 26> addAndInc_filas_mtx;
 
 	int Hash (const string& str){
 		int hash = (int)(str[0]) % 26;
@@ -124,7 +125,7 @@ protected:
 	{
 		atomic<int> *actual;
 		mutex mtx;
-		vector<ConcurrentHashMap> *resultados;
+		ConcurrentHashMap *resultados;
 		vector<string> archivos_a_leer;
 		unsigned int cant_threads;
 	} info_maximum_static_read;
@@ -137,6 +138,18 @@ protected:
 private:
 	/* Agrega todos los elementos de otro por copia */
 	void agregarTodosLosElem(const ConcurrentHashMap &otro);
+
+	/* Semáforos para evitar que addAndInc y 
+	   count_words se ejecuten concurrentemente */
+	mutex maximum_mtx;
+	condition_variable maximum_cond;
+	atomic<int> cant_threads_addAndInc;
+
+	mutex addAndInc_mtx;
+	condition_variable addAndInc_cond;
+	atomic<int> cant_threads_maximum;
+
+
 };
 
 #endif // CONCURRENT_HASH_MAP_HPP

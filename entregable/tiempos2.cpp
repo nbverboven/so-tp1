@@ -7,7 +7,7 @@
 
 int main(int argc, char const *argv[])
 {
-	printf("Empezando con maximum...\n");
+	printf("Empezando con maximum2...\n");
 
 	struct timespec start, stop;
 	clockid_t clk_id;
@@ -22,15 +22,15 @@ int main(int argc, char const *argv[])
 		for (int k = 1; k <= 100; ++k)
 		{
 			clock_gettime(clk_id, &start);
-			ConcurrentHashMap::maximum(i, 1, l);
+			ConcurrentHashMap::maximum2(i, 1, l);
 			clock_gettime(clk_id, &stop);
 
-			double diff1 = ( stop.tv_sec - start.tv_sec ) * MILLION +
+			double diff2 = ( stop.tv_sec - start.tv_sec ) * MILLION +
 			               ( stop.tv_nsec - start.tv_nsec ) / MILLION;
 
-			if (diff1 < 10000)
+			if (diff2 < 10000)
 			{
-				resultados.push_back(diff1);
+				resultados.push_back(diff2);
 			}
 		}
 
@@ -45,7 +45,7 @@ int main(int argc, char const *argv[])
 
 	// Guardo los resultados en un archivo de texto
 	ofstream outfile;
-	outfile.open("tiempos.csv", ios::out);
+	outfile.open("tiempos2.csv", ios::out);
 
 	// Escribo todos los resultados en el archivo
 	int asd = 1;
@@ -57,7 +57,7 @@ int main(int argc, char const *argv[])
 
 	outfile.close();
 
-	printf("Terminado maximum\n");
+	printf("Terminado maximum2\n");
 
 	return 0;
 }

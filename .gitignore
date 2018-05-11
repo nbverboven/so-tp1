@@ -4,6 +4,8 @@ tests-nico/*.a
 tests-nico/tests-chm
 entregable/*.csv
 entregable/tiempos
+entregable/tiempos2
+entregable/tiempos3
 entregable/corpus-post
 entregable/test-chm.cpp
 entregable/test-chm

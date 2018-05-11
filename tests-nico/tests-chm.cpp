@@ -374,13 +374,121 @@ TEST(ConcurrentHashMapMaximum, TestMasThreadsQueFilas)
 	}
 }
 
-// TEST(ConcurrentHashMapMaximumPostaPosta, Test1ThreadParaLeerY1ThreadParaCalcular)
-// {
-// 	ConcurrentHashMap h;
 
-// 	list<string> archs = {"input_text", "input_text2", "input_text3", "input_text4"};
+typedef struct aux_info_str
+{
+	ConcurrentHashMap *chm;
+	string elem;
+} aux_info;
 
-// 	ConcurrentHashMap::maximum(1, 1, archs);
-// }
+
+void *agrego_elem(void *str)
+{
+	aux_info *i = (aux_info *) str;
+	i->chm->addAndInc(i->elem);
+	i->chm->maximum(2);
+
+	return NULL;
+}
+
+
+void *agrego_elem2(void *str)
+{
+	aux_info *i = (aux_info *) str;
+	i->chm->maximum(2);
+	i->chm->addAndInc(i->elem);
+
+	return NULL;
+}
+
+
+TEST(ConcurrentHashMapConcurrency, TestAddAndIncYMaximumNoSonConcurrentes)
+{
+	ConcurrentHashMap h;
+
+	h.addAndInc("arbol");
+	h.addAndInc("arbolito");
+	h.addAndInc("arbolito");
+	h.addAndInc("arbolito");
+	h.addAndInc("arbolito");
+	h.addAndInc("arbolito");
+	h.addAndInc("arbolote");
+	h.addAndInc("computadora");
+	h.addAndInc("computadora");
+	h.addAndInc("computadora");
+	h.addAndInc("computadora");
+	h.addAndInc("computadora");
+	h.addAndInc("computadora");
+	h.addAndInc("casa");
+	h.addAndInc("casa");
+	h.addAndInc("casa");
+	h.addAndInc("mesa");
+	h.addAndInc("mesada");
+	h.addAndInc("mesada");
+	h.addAndInc("mesada");
+	h.addAndInc("silla");
+	h.addAndInc("trabajo");
+
+	aux_info arr[6];
+
+	arr[0].chm = &h;
+	arr[0].elem = "practico";
+
+	arr[1].chm = &h;
+	arr[1].elem = "de";
+
+	arr[2].chm = &h;
+	arr[2].elem = "mierda";
+
+	arr[3].chm = &h;
+	arr[3].elem = "je";
+
+	arr[4].chm = &h;
+	arr[4].elem = "je";
+
+	arr[5].chm = &h;
+	arr[5].elem = "je";
+
+	vector<pthread_t> threads(6);
+	unsigned int tid;
+
+	for (tid = 0; tid < 6; ++tid){
+		if (tid%2 == 0)
+		{
+			int status_create = pthread_create(&threads[tid], NULL, agrego_elem, &arr[tid]);
+			if (status_create) {
+				printf("Error: unable to create thread\n");
+				exit(-1);
+			}
+		}
+		else
+		{
+			int status_create = pthread_create(&threads[tid], NULL, agrego_elem2, &arr[tid]);
+			if (status_create) {
+				printf("Error: unable to create thread\n");
+				exit(-1);
+			}	
+		}
+	}
+
+	/* Espero a que todos terminen antes de seguir */
+	for (tid = 0; tid < 6; ++tid){
+		int status_join = pthread_join(threads[tid], NULL);
+		if (status_join) {
+			printf("Error: unable to join thread\n");
+			exit(-1);
+		}
+	}
+
+	// h.addAndInc("practico");
+	// h.addAndInc("de");
+	// h.addAndInc("mierda");
+	// h.addAndInc("je");
+	// h.addAndInc("je");
+	// h.addAndInc("je");
+
+	pair<string, unsigned int> asd("computadora", 6);
+	EXPECT_EQ(h.maximum(1), asd);
+}
 
 
