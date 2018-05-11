@@ -53,15 +53,14 @@ void ConcurrentHashMap::addAndInc(string key){
 	   un thread ejecutando maximum. Si es así, espero
 	   a que se liberen todos. */
 	unique_lock<mutex> lck(maximum_mtx);
-	int cuantos_en_maximum = cant_threads_maximum.load();
 
-	while (cuantos_en_maximum != 0)
-	{
+	while (cant_threads_maximum > 0){
 		addAndInc_cond.wait(lck);
-		cuantos_en_maximum = cant_threads_maximum.load();
 	}
 
-	++cant_threads_addAndInc;
+	if(cant_threads_addAndInc.fetch_add(1) == 0){
+		addAndInc_cond.notify_all();
+	}
 
 	int hash = Hash(key);
 
@@ -90,10 +89,10 @@ void ConcurrentHashMap::addAndInc(string key){
 	/* Libero el mutex de la fila dada por hash */
 	addAndInc_filas_mtx[hash].unlock();
 
-	/* Despierto a todos los que pudieran querer
+	/* Despierto a alguno que pudiera querer
 	   ejecutar maximum */
 	--cant_threads_addAndInc;
-	maximum_cond.notify_all();
+	maximum_cond.notify_one();
 }
 
 
@@ -161,15 +160,15 @@ pair<string, unsigned int> ConcurrentHashMap::maximum(unsigned int nt){
 	   un thread ejecutando addAndInc. Si es así, espero
 	   a que se liberen todos. */
 	unique_lock<mutex> lck(addAndInc_mtx);
-	int cuantos_en_addAndInc = cant_threads_addAndInc.load();
 
-	while (cuantos_en_addAndInc != 0)
-	{
+	while (cant_threads_addAndInc > 0){
 		maximum_cond.wait(lck);
-		cuantos_en_addAndInc = cant_threads_addAndInc.load();
 	}
 
-	++cant_threads_maximum;
+	if(cant_threads_maximum.fetch_add(1) == 0){
+		maximum_cond.notify_all();        
+	}
+
 
 	vector<pthread_t> threads(nt);
 	unsigned int tid;
@@ -209,10 +208,10 @@ pair<string, unsigned int> ConcurrentHashMap::maximum(unsigned int nt){
 		}
 	}
 
-	/* Despierto a todos los que pudieran querer
+	/* Despierto a alguno que pudiera querer
 	   ejecutar addAndInc. */
 	--cant_threads_maximum;
-	addAndInc_cond.notify_all();
+	addAndInc_cond.notify_one();
 
 	return solucion;
 }
@@ -240,7 +239,7 @@ ConcurrentHashMap ConcurrentHashMap::count_words(string arch){
 
 void* ConcurrentHashMap::CountWordsByFile(void *arguments){
 	ConcurrentHashMap::thread_data_countWords *thread_data;
-   	thread_data = (ConcurrentHashMap::thread_data_countWords *) arguments;
+	thread_data = (ConcurrentHashMap::thread_data_countWords *) arguments;
 
 	//cout << "Thread with id : " << thread_data->thread_id << endl;
 
@@ -275,16 +274,16 @@ ConcurrentHashMap ConcurrentHashMap::count_words(list<string> archs){
 
 		tresp = pthread_create(&threads[tid], NULL, ConcurrentHashMap::CountWordsByFile, (void *)&therads_data[tid]);
 
-      if (tresp) {
-         exit(-1);
-      }
+	  if (tresp) {
+		 exit(-1);
+	  }
 	}
 
 	for (int tid = 0; tid < cantThreads; ++tid){
 		tresp = pthread_join(threads[tid], NULL);
 		if (tresp) {
-         	exit(-1);
-      }
+			exit(-1);
+	  }
 	}
 	return dicc;
 }
@@ -292,7 +291,7 @@ ConcurrentHashMap ConcurrentHashMap::count_words(list<string> archs){
 
 void* ConcurrentHashMap::CountWordsByFileList(void *arguments){
 	ConcurrentHashMap::thread_data_countWords_list *thread_data;
-   	thread_data = (ConcurrentHashMap::thread_data_countWords_list *) arguments;
+	thread_data = (ConcurrentHashMap::thread_data_countWords_list *) arguments;
 	string filename;
 	bool hasFile = true;
 
@@ -333,7 +332,7 @@ ConcurrentHashMap ConcurrentHashMap::count_words(unsigned int n, list<string> ar
 	vector<pthread_t> threads(cantThreads);
 	int tresp;
 	pthread_attr_t attr;
-   	void *status;
+	void *status;
 
 	thread_data_countWords_list therads_data;
 	therads_data.files = archs;
@@ -341,8 +340,8 @@ ConcurrentHashMap ConcurrentHashMap::count_words(unsigned int n, list<string> ar
 	therads_data.actual = 0;
 
 	// Initialize and set thread joinable
-   	pthread_attr_init(&attr);
-   	pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
+	pthread_attr_init(&attr);
+	pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
 
 	for (int tid = 0; tid < cantThreads; ++tid){
 		tresp = pthread_create(&threads[tid], NULL, ConcurrentHashMap::CountWordsByFileList, (void *)&therads_data);
@@ -362,7 +361,7 @@ ConcurrentHashMap ConcurrentHashMap::count_words(unsigned int n, list<string> ar
 		}
 
 	}
-   	
+	
 	return dicc;
 }
 
@@ -394,18 +393,16 @@ void *ConcurrentHashMap::leoArchivos(void *info){
 		--kill_switch;
 	}
 
-	datos->mtx.lock();
 	/* Actualizo el HashMap global de resultados con la información de los archivos
 	   que revisé */
 	(datos->resultados)->agregarTodosLosElem(h);
-	datos->mtx.unlock();
 	return NULL;
 }
 
 
 pair<string, unsigned int> ConcurrentHashMap::maximum(unsigned int p_archivos, 
-	                                                  unsigned int p_maximos, 
-	                                                  list<string> archs)
+													  unsigned int p_maximos, 
+													  list<string> archs)
 {
 	vector<pthread_t> threads_leyendo_archivos(p_archivos);
 	ConcurrentHashMap archivos_leidos;
@@ -467,8 +464,8 @@ void ConcurrentHashMap::agregarTodosLosElem(const ConcurrentHashMap &otro)
 
 /* Usa count_words(list<string> archs) */
 pair<string, unsigned int> ConcurrentHashMap::maximum2(unsigned int p_archivos, 
-	                                                   unsigned int p_maximos, 
-	                                                   list<string> archs)
+													   unsigned int p_maximos, 
+													   list<string> archs)
 {
 	ConcurrentHashMap h = ConcurrentHashMap::count_words(archs); 
 	pair<string, unsigned int> res = h.maximum(p_maximos);
@@ -478,8 +475,8 @@ pair<string, unsigned int> ConcurrentHashMap::maximum2(unsigned int p_archivos,
 
 /* Usa count_words(unsigned int n, list<string> archs) */
 pair<string, unsigned int> ConcurrentHashMap::maximum3(unsigned int p_archivos, 
-	                                                   unsigned int p_maximos, 
-	                                                   list<string> archs)
+													   unsigned int p_maximos, 
+													   list<string> archs)
 {
 	ConcurrentHashMap h = ConcurrentHashMap::count_words(p_archivos, archs); 
 	pair<string, unsigned int> res = h.maximum(p_maximos);
